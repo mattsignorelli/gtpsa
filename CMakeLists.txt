@@ -35,8 +35,16 @@ add_library(gtpsa SHARED
 set_target_properties(gtpsa PROPERTIES 
   PUBLIC_HEADER include/gtpsa.h)
 
-set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3 -ftree-vectorize -fPIC -flto -Waggregate-return -Wcast-align -Wdisabled-optimization -Wpointer-arith -Wsign-compare -Wwrite-strings -Wbad-function-cast -Wmissing-prototypes -Wnested-externs -Wstrict-prototypes -Wunreachable-code -Wno-vla-parameter -fno-math-errno -fno-builtin-cproj -ffast-math")
-# set(CMAKE_C_FLAGS "${CFLAGS}")
+# Try to find LAPACK:
+find_library(LAPACK lapack PATH_SUFFIXES lapack)
+
+target_link_libraries(gtpsa PUBLIC ${LAPACK})
+
+set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3 \
+-ftree-vectorize -fPIC -flto -Waggregate-return -Wcast-align -Wdisabled-optimization \
+-Wpointer-arith -Wsign-compare -Wwrite-strings -Wbad-function-cast -Wmissing-prototypes \
+-Wnested-externs -Wstrict-prototypes -Wunreachable-code -Wno-vla-parameter -fno-math-errno \
+-fno-builtin-cproj -ffast-math -llapack")
 
 include(GNUInstallDirs)
 install(TARGETS gtpsa

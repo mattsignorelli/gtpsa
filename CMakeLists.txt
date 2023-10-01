@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13.2)
-project(gtpsa)
+project(mad_tpsa)
 
-add_library(gtpsa SHARED
+add_library(mad_tpsa SHARED
   code/mad_bit.c
   code/mad_cst.c
   code/mad_ctpsa.c
@@ -32,13 +32,18 @@ add_library(gtpsa SHARED
   code/mad_vec.c
 )
 
-set_target_properties(gtpsa PROPERTIES 
-  PUBLIC_HEADER include/gtpsa.h)
+set_target_properties(mad_tpsa PROPERTIES 
+  LIBRARY_OUTPUT_DIRECTORY ./build/lib 
+  PUBLIC_HEADER ./build/include/mad_tpsa.h)
+
 
 # Try to find LAPACK:
-find_library(LAPACK lapack PATH_SUFFIXES lapack)
+find_library(LAPACK lapack 
+  HINTS ENV LD_LIBRARY_PATH             # Linux
+  HINTS ENV DYLD_FALLBACK_LIBRARY_PATH  # Mac
+  PATH_SUFFIXES lapack)
 
-target_link_libraries(gtpsa PUBLIC ${LAPACK})
+target_link_libraries(mad_tpsa PUBLIC ${LAPACK})
 
 set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3 \
 -ftree-vectorize -fPIC -flto -Waggregate-return -Wcast-align -Wdisabled-optimization \
@@ -46,7 +51,8 @@ set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3
 -Wnested-externs -Wstrict-prototypes -Wunreachable-code -Wno-vla-parameter -fno-math-errno \
 -fno-builtin-cproj -ffast-math -llapack")
 
-include(GNUInstallDirs)
-install(TARGETS gtpsa
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+#include(GNUInstallDirs)
+install(TARGETS mad_tpsa 
+  LIBRARY DESTINATION /usr/local/lib 
+  PUBLIC_HEADER DESTINATION /usr/local/include)
+

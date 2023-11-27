@@ -36,14 +36,19 @@ set_target_properties(mad_tpsa PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY ./build/lib 
   PUBLIC_HEADER ./build/include/mad_tpsa.h)
 
-
+set(BLA_PREFER_PKGCONFIG ON)
 # Try to find LAPACK:
-find_library(LAPACK lapack 
-  HINTS ENV LD_LIBRARY_PATH             # Linux
-  HINTS ENV DYLD_FALLBACK_LIBRARY_PATH  # Mac
-  PATH_SUFFIXES lapack)
+find_package(LAPACK)
+# lapack
+ # HINTS ENV LD_LIBRARY_PATH             # Linux
+  #HINTS ENV DYLD_FALLBACK_LIBRARY_PATH  # Mac
+  #PATH_SUFFIXES lapack)
 
-target_link_libraries(mad_tpsa PUBLIC ${LAPACK})
+if (NOT LAPACK_FOUND)
+  message(FATAL_ERROR "LAPACK library not found")
+endif()
+
+target_link_libraries(mad_tpsa PUBLIC ${LAPACK_LIBRARIES})
 
 set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3 \
 -ftree-vectorize -fPIC -flto -Waggregate-return -Wcast-align -Wdisabled-optimization \

@@ -1,12 +1,20 @@
 cmake_minimum_required(VERSION 3.13.2)
 set (CMAKE_C_COMPILER "gcc")
-project(mad_tpsa)
+project(gtpsa)
+set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3 \
+-ftree-vectorize -fPIC -flto -Waggregate-return -Wcast-align -Wdisabled-optimization \
+-Wpointer-arith -Wsign-compare -Wwrite-strings -Wbad-function-cast -Wmissing-prototypes \
+-Wnested-externs -Wstrict-prototypes -Wunreachable-code -Wno-vla-parameter -fno-math-errno \
+-fno-builtin-cproj -ffast-math -llapack")
 
 if(NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
   message(FATAL_ERROR "GNU GCC not found")
 endif()
+if(CMAKE_C_COMPILER_VERSION VERSION_LESS 11.1)
+  message(FATAL_ERROR "GCC version 11.1 or greater required")
+endif()
 
-add_library(mad_tpsa SHARED
+add_library(gtpsa SHARED
   code/mad_bit.c
   code/mad_cst.c
   code/mad_ctpsa.c
@@ -37,32 +45,15 @@ add_library(mad_tpsa SHARED
   code/mad_vec.c
 )
 
-set_target_properties(mad_tpsa PROPERTIES 
-  LIBRARY_OUTPUT_DIRECTORY ./build/lib 
-  PUBLIC_HEADER ./build/include/mad_tpsa.h)
+set_target_properties(gtpsa PROPERTIES 
+  LIBRARY_OUTPUT_DIRECTORY ./build/lib )
 
 set(BLA_PREFER_PKGCONFIG ON)
-# Try to find LAPACK:
-find_package(LAPACK)
-# lapack
- # HINTS ENV LD_LIBRARY_PATH             # Linux
-  #HINTS ENV DYLD_FALLBACK_LIBRARY_PATH  # Mac
-  #PATH_SUFFIXES lapack)
+find_package(LAPACK REQUIRED)
 
-if (NOT LAPACK_FOUND)
-  message(FATAL_ERROR "LAPACK library not found")
-endif()
-
-target_link_libraries(mad_tpsa PUBLIC ${LAPACK_LIBRARIES})
-
-set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3 \
--ftree-vectorize -fPIC -flto -Waggregate-return -Wcast-align -Wdisabled-optimization \
--Wpointer-arith -Wsign-compare -Wwrite-strings -Wbad-function-cast -Wmissing-prototypes \
--Wnested-externs -Wstrict-prototypes -Wunreachable-code -Wno-vla-parameter -fno-math-errno \
--fno-builtin-cproj -ffast-math -llapack")
-
+target_link_libraries(gtpsa PUBLIC ${LAPACK_LIBRARIES})
 #include(GNUInstallDirs)
-install(TARGETS mad_tpsa 
-  LIBRARY DESTINATION /usr/local/lib 
-  PUBLIC_HEADER DESTINATION /usr/local/include)
+
+install(TARGETS gtpsa 
+  LIBRARY DESTINATION /usr/local/lib )
 

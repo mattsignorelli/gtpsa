@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.13.2)
 set (CMAKE_C_COMPILER "gcc")
 project(mad_tpsa)
 
+if(NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+  message(FATAL_ERROR "GNU GCC not found")
+endif()
 
 add_library(mad_tpsa SHARED
   code/mad_bit.c

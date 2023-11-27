@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.13.2)
+set (CMAKE_C_COMPILER "gcc")
 project(mad_tpsa)
+
 
 add_library(mad_tpsa SHARED
   code/mad_bit.c

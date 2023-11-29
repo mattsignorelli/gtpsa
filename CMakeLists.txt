@@ -7,12 +7,18 @@ set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3
 -Wnested-externs -Wstrict-prototypes -Wunreachable-code -Wno-vla-parameter -fno-math-errno \
 -fno-builtin-cproj -ffast-math -llapack")
 
+# Set the output directory for the executable
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 if(NOT "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
   message(FATAL_ERROR "GNU GCC not found")
 endif()
 if(CMAKE_C_COMPILER_VERSION VERSION_LESS 11.1)
   message(FATAL_ERROR "GCC version 11.1 or greater required")
 endif()
+
+# Create the output directory
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_library(gtpsa SHARED
   code/mad_bit.c
@@ -45,8 +51,8 @@ add_library(gtpsa SHARED
   code/mad_vec.c
 )
 
-set_target_properties(gtpsa PROPERTIES 
-  LIBRARY_OUTPUT_DIRECTORY ./build/lib )
+#set_target_properties(gtpsa PROPERTIES 
+#  LIBRARY_OUTPUT_DIRECTORY ./build/lib )
 
 set(BLA_PREFER_PKGCONFIG ON)
 find_package(LAPACK REQUIRED)
@@ -54,6 +60,7 @@ find_package(LAPACK REQUIRED)
 target_link_libraries(gtpsa PUBLIC ${LAPACK_LIBRARIES})
 #include(GNUInstallDirs)
 
-install(TARGETS gtpsa 
-  LIBRARY DESTINATION /usr/local/lib )
+install(TARGETS gtpsa LIBRARY DESTINATION bin)
+#install(TARGETS gtpsa 
+#  LIBRARY DESTINATION /usr/local/lib )
 

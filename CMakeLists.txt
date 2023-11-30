@@ -42,19 +42,19 @@ add_library(gtpsa SHARED
 
 # Find LAPACK or LIBBLASTRAMPOLINE
 set(BLA_PREFER_PKGCONFIG ON)
-find_package(LAPACK REQUIRED)
+find_package(LAPACK QUIET)
 
-#if(NOT LAPACK_FOUND)
-    #find_library(LIBBLASTRAMPOLINE NAMES blastrampoline)
-    #if(NOT LIBBLASTRAMPOLINE)
-    #  message(FATAL_ERROR "Unable to find BLAS and/or LAPACK")
-    #endif()
-#endif()
+if(NOT LAPACK_FOUND)
+    find_library(LIBBLASTRAMPOLINE NAMES blastrampoline)
+    if(NOT LIBBLASTRAMPOLINE)
+      message(FATAL_ERROR "Unable to find LAPACK")
+    endif()
+endif()
 
-#if(LAPACK_FOUND)
-target_link_libraries(gtpsa PUBLIC ${LAPACK_LIBRARIES})
-#else()
-#    target_link_libraries(gtpsa PUBLIC ${LIBBLASTRAMPOLINE})
-#endif()
+if(LAPACK_FOUND)
+  target_link_libraries(gtpsa PUBLIC ${LAPACK_LIBRARIES})
+else()
+  target_link_libraries(gtpsa PUBLIC ${LIBBLASTRAMPOLINE})
+endif()
 
 install(TARGETS gtpsa LIBRARY DESTINATION lib)

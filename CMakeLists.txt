@@ -63,4 +63,4 @@ target_link_libraries(gtpsa PUBLIC ${LAPACK_LIBRARIES})
 install(TARGETS gtpsa LIBRARY DESTINATION bin)
 #install(TARGETS gtpsa 
 #  LIBRARY DESTINATION /usr/local/lib )
-
+# test

@@ -45,7 +45,7 @@ set(BLA_PREFER_PKGCONFIG ON)
 find_package(LAPACK QUIET)
 
 if(NOT LAPACK_FOUND)
-    find_library(LIBBLASTRAMPOLINE NAMES blastrampoline)
+    find_library(LIBBLASTRAMPOLINE NAMES blastrampoline-5)
     if(NOT LIBBLASTRAMPOLINE)
       message(FATAL_ERROR "Unable to find LAPACK")
     endif()

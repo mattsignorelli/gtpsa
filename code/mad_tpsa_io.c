@@ -21,7 +21,6 @@
 #include <ctype.h>
 #include <string.h>
 #include <assert.h>
-#include <stdlib.h>
 
 #include "mad_mem.h"
 #include "mad_str.h"

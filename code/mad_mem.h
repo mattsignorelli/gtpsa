@@ -69,15 +69,9 @@ void   mad_mdump    (FILE*);
 #define mad_malloc(s)    mad_mcheck(__func__, mad_malloc(s)  )
 #define mad_calloc(c,s)  mad_mcheck(__func__, mad_calloc(c,s))
 
-#if !defined(__clang__) && defined(__GNUC__)
 void* (mad_malloc) (size_t)        __attribute__((hot,malloc(mad_free,1),malloc,returns_nonnull));
 void* (mad_calloc) (size_t,size_t) __attribute__((hot,malloc(mad_free,1),malloc,returns_nonnull));
 void* (mad_realloc)(void* ,size_t) __attribute__((hot,malloc(mad_free,1)));
-#else
-void* (mad_malloc) (size_t)        __attribute__((hot,malloc(),malloc,returns_nonnull));
-void* (mad_calloc) (size_t,size_t) __attribute__((hot,malloc(),malloc,returns_nonnull));
-void* (mad_realloc)(void* ,size_t) __attribute__((hot,malloc()));
-#endif
 void  (mad_free  ) (void* )        __attribute__((hot));
 
 static inline void*

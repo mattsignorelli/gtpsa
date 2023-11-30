@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13.2)
-set (CMAKE_C_COMPILER "gcc") # Prefer GCC when available
+set (CMAKE_C_COMPILER "gcc")
 project(gtpsa)
 set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3 \
 -ftree-vectorize -fPIC -flto -Waggregate-return -Wcast-align -Wdisabled-optimization \
@@ -40,21 +40,9 @@ add_library(gtpsa SHARED
   code/mad_vec.c
 )
 
-# Find LAPACK or LIBBLASTRAMPOLINE
+# Find LAPACK
 set(BLA_PREFER_PKGCONFIG ON)
 find_package(LAPACK REQUIRED)
-
-#if(NOT LAPACK_FOUND)
-#    find_library(LIBBLASTRAMPOLINE NAMES blastrampoline-5)
-#    if(NOT LIBBLASTRAMPOLINE)
-#      message(FATAL_ERROR "Unable to find LAPACK")
-#    endif()
-#endif()
-
-#if(LAPACK_FOUND)
-  target_link_libraries(gtpsa PUBLIC ${LAPACK_LIBRARIES})
-#else()
-#  target_link_libraries(gtpsa PUBLIC ${LIBBLASTRAMPOLINE})
-#endif()
+target_link_libraries(gtpsa PUBLIC ${LAPACK_LIBRARIES})
 
 install(TARGETS gtpsa LIBRARY DESTINATION lib)

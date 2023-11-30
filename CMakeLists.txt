@@ -52,7 +52,7 @@ find_package(LAPACK REQUIRED)
 #endif()
 
 #if(LAPACK_FOUND)
-target_link_libraries(gtpsa PUBLIC LAPACK32) #${LAPACK_LIBRARIES})
+target_link_libraries(gtpsa PUBLIC LAPACK) #${LAPACK_LIBRARIES})
 #else()
 #    target_link_libraries(gtpsa PUBLIC ${LIBBLASTRAMPOLINE})
 #endif()

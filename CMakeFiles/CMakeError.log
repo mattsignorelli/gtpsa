@@ -1,0 +1,55 @@
+Determining if the function sgemm_ exists failed with the following output:
+Change Dir: /home/matt/tpsa/gtpsa/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_47aec/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_47aec.dir/build.make CMakeFiles/cmTC_47aec.dir/build
+gmake[1]: Entering directory '/home/matt/tpsa/gtpsa/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_47aec.dir/CheckFunctionExists.c.o
+/usr/bin/gcc   -DCHECK_FUNCTION_EXISTS=sgemm_ -o CMakeFiles/cmTC_47aec.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.22/Modules/CheckFunctionExists.c
+Linking C executable cmTC_47aec
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_47aec.dir/link.txt --verbose=1
+/usr/bin/gcc  -DCHECK_FUNCTION_EXISTS=sgemm_ CMakeFiles/cmTC_47aec.dir/CheckFunctionExists.c.o -o cmTC_47aec 
+/usr/bin/ld: CMakeFiles/cmTC_47aec.dir/CheckFunctionExists.c.o: in function `main':
+CheckFunctionExists.c:(.text+0x14): undefined reference to `sgemm_'
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [CMakeFiles/cmTC_47aec.dir/build.make:99: cmTC_47aec] Error 1
+gmake[1]: Leaving directory '/home/matt/tpsa/gtpsa/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_47aec/fast] Error 2
+
+
+
+Determining if the function cheev_ exists failed with the following output:
+Change Dir: /home/matt/tpsa/gtpsa/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_ffb77/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_ffb77.dir/build.make CMakeFiles/cmTC_ffb77.dir/build
+gmake[1]: Entering directory '/home/matt/tpsa/gtpsa/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_ffb77.dir/CheckFunctionExists.c.o
+/usr/bin/gcc   -DCHECK_FUNCTION_EXISTS=cheev_ -o CMakeFiles/cmTC_ffb77.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.22/Modules/CheckFunctionExists.c
+Linking C executable cmTC_ffb77
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ffb77.dir/link.txt --verbose=1
+/usr/bin/gcc  -DCHECK_FUNCTION_EXISTS=cheev_ CMakeFiles/cmTC_ffb77.dir/CheckFunctionExists.c.o -o cmTC_ffb77  /usr/lib/x86_64-linux-gnu/libblas.so -lm -ldl 
+/usr/bin/ld: CMakeFiles/cmTC_ffb77.dir/CheckFunctionExists.c.o: in function `main':
+CheckFunctionExists.c:(.text+0x14): undefined reference to `cheev_'
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [CMakeFiles/cmTC_ffb77.dir/build.make:100: cmTC_ffb77] Error 1
+gmake[1]: Leaving directory '/home/matt/tpsa/gtpsa/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_ffb77/fast] Error 2
+
+
+
+Determining if the function cheev_ exists failed with the following output:
+Change Dir: /home/matt/tpsa/gtpsa/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_a0014/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_a0014.dir/build.make CMakeFiles/cmTC_a0014.dir/build
+gmake[1]: Entering directory '/home/matt/tpsa/gtpsa/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_a0014.dir/CheckFunctionExists.c.o
+/usr/bin/gcc   -DCHECK_FUNCTION_EXISTS=cheev_ -o CMakeFiles/cmTC_a0014.dir/CheckFunctionExists.c.o -c /usr/share/cmake-3.22/Modules/CheckFunctionExists.c
+Linking C executable cmTC_a0014
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a0014.dir/link.txt --verbose=1
+/usr/bin/gcc  -DCHECK_FUNCTION_EXISTS=cheev_ CMakeFiles/cmTC_a0014.dir/CheckFunctionExists.c.o -o cmTC_a0014  /usr/lib/x86_64-linux-gnu/liblapack.so /usr/lib/x86_64-linux-gnu/libblas.so -fortranlibs 
+gcc: error: unrecognized command-line option ‘-fortranlibs’
+gmake[1]: *** [CMakeFiles/cmTC_a0014.dir/build.make:101: cmTC_a0014] Error 1
+gmake[1]: Leaving directory '/home/matt/tpsa/gtpsa/CMakeFiles/CMakeTmp'
+gmake: *** [Makefile:127: cmTC_a0014/fast] Error 2
+
+
+

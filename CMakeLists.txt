@@ -5,7 +5,7 @@ set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3
 -ftree-vectorize -fPIC -flto -Waggregate-return -Wcast-align -Wdisabled-optimization \
 -Wpointer-arith -Wsign-compare -Wwrite-strings -Wbad-function-cast -Wmissing-prototypes \
 -Wnested-externs -Wstrict-prototypes -Wunreachable-code -Wno-vla-parameter -fno-math-errno \
--fno-builtin-cproj -ffast-math -llapack")
+-fno-builtin-cproj -ffast-math -llapack32")
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 

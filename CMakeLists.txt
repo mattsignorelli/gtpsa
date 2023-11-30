@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13.2)
-set (CMAKE_C_COMPILER "gcc")
+set (CMAKE_C_COMPILER "gcc") # Prefer GCC when available
 project(gtpsa)
 set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3 \
 -ftree-vectorize -fPIC -flto -Waggregate-return -Wcast-align -Wdisabled-optimization \
@@ -7,11 +7,7 @@ set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3
 -Wnested-externs -Wstrict-prototypes -Wunreachable-code -Wno-vla-parameter -fno-math-errno \
 -fno-builtin-cproj -ffast-math -llapack")
 
-# Set the output directory for the executable
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-# Create the output directory
-file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 add_library(gtpsa SHARED
   code/mad_bit.c
@@ -61,4 +57,4 @@ else()
     target_link_libraries(gtpsa PUBLIC ${LIBBLASTRAMPOLINE})
 endif()
 
-install(TARGETS gtpsa LIBRARY DESTINATION bin)
+install(TARGETS gtpsa LIBRARY DESTINATION lib)

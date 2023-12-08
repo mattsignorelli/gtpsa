@@ -42,7 +42,6 @@ add_library(gtpsa SHARED
 
 # Find LAPACK
 set(BLA_PREFER_PKGCONFIG ON)
-set( BLA_SIZEOF_INTEGER 4 )
 find_package(LAPACK REQUIRED)
 target_link_libraries(gtpsa PUBLIC ${LAPACK_LIBRARIES})
 

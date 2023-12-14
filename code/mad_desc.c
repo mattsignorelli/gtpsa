@@ -145,8 +145,15 @@ static inline void
 mono_realloc (D *d, ssz_t nc)
 {
   assert(d);
+  if (nc > 10*DESC_WARN_MONO)
+    error("gtpsa are too large (%d > %d monomials)", nc, 10*DESC_WARN_MONO);
+
+#if DEBUG_DESC > 1
+  printf("desc nc: %d\n", nc);
+#endif
+
   d->nc = nc;
-  d->monos = mad_realloc(d->monos, nc*d->nn * sizeof *d->monos);
+  d->monos = mad_realloc(d->monos, nc*(d->nn * sizeof *d->monos));
 }
 
 static inline void
@@ -156,9 +163,10 @@ set_monos (D *d) // builds the monomials matrix in Tv order
   assert(d && d->no);
 
   int n = d->nn;
-  d->nc = max_nc(n, d->mo);   // upper bound
-  if (!d->nc || d->nc > DESC_WARN_MONO)
-    d->nc = max_nc(6,8);     // overflow or too large, start with (6,8)=3003
+  u64_t nc = max_nc(n, d->mo); // upper bound
+
+  // check for overflow, then start with (6,8)=3003
+  d->nc = nc <= 0 || nc > DESC_WARN_MONO ? (ssz_t)max_nc(6,8) : (ssz_t)nc;
   mono_realloc(d, d->nc);
 
   ord_t m[n];
@@ -175,6 +183,12 @@ set_monos (D *d) // builds the monomials matrix in Tv order
   // resize the matrix (shrink)
   mono_realloc(d, i);
   d->size += d->nc*d->nn * sizeof *d->monos;
+
+  if (d->nc > DESC_WARN_MONO)
+    warn("gtpsa are very large (%d monomials),\n\t"
+         "building descriptor may take some time,\n\t"
+         "consider that multiplication is quadratic in size.", d->nc);
+
   DBGFUN(<-);
 }
 
@@ -284,24 +298,29 @@ tbl_by_ord(D *d)
   d->tv2to   = mad_malloc( d->nc    * sizeof *d->tv2to  );
   d->to2tv   = mad_malloc( d->nc    * sizeof *d->to2tv  );
   d->ords    = mad_malloc( d->nc    * sizeof *d->ords   );
+  d->prms    = mad_malloc( d->nc    * sizeof *d->prms   );
   d->ord2idx = mad_malloc((d->mo+2) * sizeof *d->ord2idx);
 
   d->size +=  d->nc    * sizeof *d->To;
   d->size +=  d->nc*2  * sizeof *d->tv2to; // tv2to + to2tv
   d->size +=  d->nc    * sizeof *d->ords;
+  d->size +=  d->nc    * sizeof *d->prms;
   d->size += (d->mo+2) * sizeof *d->ord2idx;
 
   cmp_d = d;
   for (idx_t i=0; i < d->nc; ++i) d->to2tv[i] = i;
   qsort(d->to2tv, d->nc, sizeof *d->to2tv, cmp_mono);
 
-  d->To[0] = d->monos, d->tv2to[0] = 0, d->ords[0] = 0, d->ord2idx[0] = 0;
+  d->To[0] = d->monos;
+  d->tv2to[0] = 0, d->ord2idx[0] = 0, d->ords[0] = d->prms[0] = 0;
 
   for (idx_t i=1, j=0; i < d->nc; ++i) {
     d->tv2to[d->to2tv[i]] = i;
     d->To[i] = d->monos + d->to2tv[i]*d->nn;
     d->ords[i] = mad_mono_ord(d->nn, d->To[i]);
+    d->prms[i] = mad_mono_ord(d->np, d->To[i]+d->nv);
     if (d->ords[i] > d->ords[i-1]) d->ord2idx[++j] = i;
+//  printf("i=%d, o=%d, p=%d\n", i, d->ords[i], d->prms[i]);
   }
   d->ord2idx[d->mo+1] = d->nc;
 
@@ -536,16 +555,23 @@ tbl_build_LC (ord_t oa, ord_t ob, D *d)
   const ssz_t cols = o2i[oa+1] - o2i[oa], // sizes of orders
               rows = o2i[ob+1] - o2i[ob];
 
-#if DEBUG_DESC > 2
-  printf("LC[%d,%d]=%d index slots\n", rows, cols, rows*cols);
-#endif
   // allocation lc[rows,cols]: lc[ib,ia] = lc[(ib-o2i[ob])*cols + ia-o2i[oa]]
-  ssz_t mat_size = rows*cols;
+  size_t mat_size = (size_t)rows*cols;
+
+#if DEBUG_DESC > 2
+  printf("LC[%d,%d]=%zu index slots\n", rows, cols, mat_size);
+#endif
+
+  if (mat_size > INT32_MAX)
+    error("gtpsa are too large (%d monomials),\n\t"
+          "indexing matrix #slots for orders %d x %d = %zu > 2^31",
+          d->nc, oa, ob, mat_size);
+
   idx_t *lc = mad_malloc(mat_size * sizeof *lc);
   d->size += mat_size * sizeof *lc;
 
   // initialisation
-  for (ssz_t i=0; i < mat_size; ++i) lc[i] = -1;
+  for (size_t i=0; i < mat_size; ++i) lc[i] = -1;
 
   // loop over indexes of order ob
   for (idx_t ib=o2i[ob]; ib < o2i[ob+1]; ++ib) {
@@ -815,7 +841,7 @@ set_thread (D *d)
   // [0] serial(all), [1..nth] parallel(split)
   int nth = d->nth + (d->nth > 1);
 
-  d->ocs = mad_malloc(nth * sizeof *(d->ocs));
+  d->ocs = mad_malloc(nth * sizeof *d->ocs);
   d->size += nth * sizeof *(d->ocs);
 
   int sizes[nth];
@@ -947,9 +973,6 @@ desc_init (int nn, ord_t mo, int np, ord_t po, const ord_t no_[nn])
 #endif
 
   set_monos(d);
-  if (d->nc > DESC_WARN_MONO)
-    warn("gtpsa will be very large (%d monomials)", d->nc);
-
   d->nth = omp_get_max_threads();
 
   DBGFUN(<-);
@@ -1097,12 +1120,13 @@ mad_desc_nxtbyord (const D *d, ssz_t n, ord_t m[n])
 }
 
 ord_t
-mad_desc_mono (const D *d, idx_t i, ssz_t n, ord_t m_[n])
+mad_desc_mono (const D *d, idx_t i, ssz_t n, ord_t m_[n], ord_t *p_)
 {
   DBGFUN(->);
   assert(d);
   ensure(0 <= i && i < d->nc, "index out of bounds");
   if (m_ && n > 0) mad_mono_copy(MIN(n,d->nn), d->To[i], m_);
+  if (p_) *p_ = d->prms[i];
   ord_t ret = d->ords[i];
   DBGFUN(<-);
   return ret;
@@ -1306,6 +1330,7 @@ mad_desc_del (const D *d_)
   mad_free((void*)d->no);
   mad_free(d->monos);
   mad_free(d->ords);
+  mad_free(d->prms);
   mad_free(d->To);
   mad_free(d->Tv);
   mad_free(d->ord2idx);

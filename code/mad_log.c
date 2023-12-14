@@ -33,8 +33,7 @@ LUALIB_API void (mad_error) (str_t fn, str_t fmt, ...)
 {
   va_list va;
   va_start(va, fmt);
-  fflush(stdout);
-  fprintf(stderr, fn ? "error: %s: " : "error: ", fn);
+   fprintf(stderr, fn ? "error: %s: " : "error: ", fn);
   vfprintf(stderr, fmt, va);
   va_end(va);
   fputc('\n', stderr);
@@ -46,8 +45,7 @@ LUALIB_API void (mad_warn) (str_t fn, str_t fmt, ...)
   ++mad_warn_count;
   va_list va;
   va_start(va, fmt);
-  fflush(stdout);
-  fprintf(stderr, fn ? "warning: %s: " : "warning: ", fn);
+   fprintf(stderr, fn ? "warning: %s: " : "warning: ", fn);
   vfprintf(stderr, fmt, va);
   va_end(va);
   fputc('\n', stderr);
@@ -58,7 +56,6 @@ LUALIB_API void (mad_trace) (int lvl, str_t fn, str_t fmt, ...)
   if (mad_trace_level < lvl) return;
   va_list va;
   va_start(va, fmt);
-  fflush(stdout);
   if (fn) fprintf(stderr, "%s", fn);
   vfprintf(stderr, fmt, va);
   va_end(va);

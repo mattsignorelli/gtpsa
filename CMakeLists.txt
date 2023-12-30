@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13.2)
+cmake_minimum_required(VERSION 3.22)
 set (CMAKE_C_COMPILER "gcc")
 project(gtpsa)
 set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3 \
@@ -42,6 +42,7 @@ add_library(gtpsa SHARED
 
 # Find LAPACK
 set(BLA_PREFER_PKGCONFIG ON)
+set( BLA_SIZEOF_INTEGER 4 )
 find_package(LAPACK REQUIRED)
 target_link_libraries(gtpsa PUBLIC ${LAPACK_LIBRARIES})
 

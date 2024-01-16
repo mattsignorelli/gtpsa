@@ -21,4 +21,7 @@ mv tests/gtpsa.f90 code/
 rm code/mad_main.c code/mad_fft.c code/mad_nlopt.[hc] code/mad_ver.h
 
 # add files needed to replace MAD core dependencies. Currently this is mad_log.c.
-cp src/libnlopt/mad_log.c code
+cp MAD/src/libnlopt/mad_log.c code
+
+# After pulling, remember to delete micado/other unnecessary orbit correction 
+# code from mad_mat.c !!

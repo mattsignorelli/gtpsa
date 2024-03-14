@@ -69,7 +69,8 @@ void    mad_tpsa_getord  (const tpsa_t *t, tpsa_t *r, ord_t ord);
 void    mad_tpsa_cutord  (const tpsa_t *t, tpsa_t *r, int   ord); // ord..mo = 0 or 0..-ord=0
 idx_t   mad_tpsa_maxord  (const tpsa_t *t,            ssz_t n, idx_t idx_[]);
 void    mad_tpsa_convert (const tpsa_t *t, tpsa_t *r, ssz_t n, idx_t t2r_[], int pb);
-void    mad_tpsa_setvar  (      tpsa_t *t, num_t v, idx_t iv_, num_t scl_);
+void    mad_tpsa_setvar  (      tpsa_t *t, num_t v, idx_t iv, num_t scl_);
+void    mad_tpsa_setprm  (      tpsa_t *t, num_t v, idx_t ip);
 void    mad_tpsa_setval  (      tpsa_t *t, num_t v);
 void    mad_tpsa_setnam  (      tpsa_t *t, str_t nam);
 void    mad_tpsa_clear   (      tpsa_t *t);
@@ -187,8 +188,8 @@ void    mad_tpsa_exppb    (ssz_t na, const tpsa_t *ma[], const tpsa_t *mb[], tps
 void    mad_tpsa_logpb    (ssz_t na, const tpsa_t *ma[], const tpsa_t *mb[], tpsa_t *mc[]); // exp(log(:F:))K
 
 num_t   mad_tpsa_mnrm     (ssz_t na, const tpsa_t *ma[]);
-void    mad_tpsa_minv     (ssz_t na, const tpsa_t *ma[],                               tpsa_t *mc[]);
-void    mad_tpsa_pminv    (ssz_t na, const tpsa_t *ma[],                               tpsa_t *mc[], idx_t select[]);
+void    mad_tpsa_minv     (ssz_t na, const tpsa_t *ma[], ssz_t nb,                     tpsa_t *mc[]);
+void    mad_tpsa_pminv    (ssz_t na, const tpsa_t *ma[], ssz_t nb,                     tpsa_t *mc[], idx_t select[]);
 void    mad_tpsa_compose  (ssz_t na, const tpsa_t *ma[], ssz_t nb, const tpsa_t *mb[], tpsa_t *mc[]);
 void    mad_tpsa_translate(ssz_t na, const tpsa_t *ma[], ssz_t nb, const num_t   tb[], tpsa_t *mc[]);
 void    mad_tpsa_eval     (ssz_t na, const tpsa_t *ma[], ssz_t nb, const num_t   tb[], num_t   tc[]);

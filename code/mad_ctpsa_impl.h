@@ -19,11 +19,13 @@
  o-----------------------------------------------------------------------------o
 */
 
+#include <assert.h>
 #include <tgmath.h>
 #include <complex.h>
 
 #include "mad_bit.h"
 #include "mad_ctpsa.h"
+#include "mad_tpsa_impl.h"
 
 // --- types ------------------------------------------------------------------o
 
@@ -38,7 +40,7 @@ struct ctpsa_ { // warning: must be identical to LuaJIT def (see mad_cmad.mad)
 
 // --- macros -----------------------------------------------------------------o
 
-#ifndef MAD_TPSA_NOHELPER
+#ifdef MAD_CTPSA_IMPL
 
 #define T                ctpsa_t
 #define NUM              cpx_t
@@ -56,55 +58,89 @@ struct ctpsa_ { // warning: must be identical to LuaJIT def (see mad_cmad.mad)
 
 // --- helpers ----------------------------------------------------------------o
 
+static inline ctpsa_t* // trunc TPSA order to d->to, don't use coef
+mad_ctpsa_trunc0 (ctpsa_t *t)
+{ return (ctpsa_t*) mad_tpsa_trunc0((tpsa_t*)t); }
+
+static inline ctpsa_t* // copy TPSA orders, don't use coef.
+mad_ctpsa_copy0 (const ctpsa_t *t, ctpsa_t *r)
+{ return (ctpsa_t*) mad_tpsa_copy0((const tpsa_t*)t, (tpsa_t*)r); }
+
+static inline ctpsa_t* // copy TPSA orders, don't use coef.
+mad_ctpsa_copy00 (const ctpsa_t *a, const ctpsa_t *b, ctpsa_t *r)
+{ return (ctpsa_t*) mad_tpsa_copy00((const tpsa_t*)a, (const tpsa_t*)b, (tpsa_t*)r); }
+
+// --- functions accessing coef[0]
+
+static inline log_t // check if TPSA is nul
+mad_ctpsa_isnul0 (const ctpsa_t *t)
+{
+  assert(t);
+  return !(t->nz || t->coef[0]);
+}
+
 static inline ctpsa_t* // reset TPSA
 mad_ctpsa_reset0 (ctpsa_t *t)
 {
-  t->lo = t->hi = 0, t->nz = 0, t->coef[0] = 0;
+  assert(t);
+  t->lo = 1, t->hi = 0, t->nz = 0, t->coef[0] = 0;
   return t;
 }
 
-static inline ctpsa_t* // copy t_lo, t_hi(r_mo,d_to), t_nz(r_hi) but not coefs!
-mad_ctpsa_copy0 (const ctpsa_t *t, ctpsa_t *r)
+static inline ctpsa_t* // adjust TPSA orders lo,hi to nz
+mad_ctpsa_adjust0 (ctpsa_t *t)
 {
-  r->hi = MIN(t->hi, r->mo, t->d->to);
-  r->nz = mad_bit_hcut(t->nz, r->hi);
-  if (!r->nz) return mad_ctpsa_reset0(r);
-  if ((r->lo=t->lo)) r->coef[0] = 0;
-  return r;
-}
-
-static inline ctpsa_t* // clear t_coef[0], adjust t_lo, t_nz
-mad_ctpsa_clear0 (ctpsa_t *t)
-{
-  t->nz = mad_bit_clr(t->nz, 0);
-  if (!t->nz) return mad_ctpsa_reset0(t);
-  t->lo = mad_bit_lowest(t->nz);
-  t->coef[0] = 0;
-  return t;
-}
-
-static inline ctpsa_t* // update t_lo, t_hi and t_nz for zero hpoly in [lo,hi]
-mad_ctpsa_update0 (ctpsa_t *t, ord_t lo, ord_t hi)
-{
-  const idx_t *o2i = t->d->ord2idx;
-  for (ord_t o = lo; o <= hi; ++o)
-    if (mad_bit_tst(t->nz, o)) {
-      idx_t i = o2i[o], ni = o2i[o+1]-1;
-      cpx_t c = t->coef[ni]; t->coef[ni] = 1; // set stopper
-      while (t->coef[i] == 0) ++i;
-      if (i == ni && c == 0) t->nz = mad_bit_clr(t->nz, o);
-      t->coef[ni] = c; // restore value
-    }
-  if (!t->nz) return mad_ctpsa_reset0(t);
+  assert(t);
+  if (mad_ctpsa_isnul0(t)) return mad_ctpsa_reset0(t);
   t->lo = mad_bit_lowest (t->nz);
   t->hi = mad_bit_highest(t->nz);
-  if (t->lo) t->coef[0] = 0;
   return t;
 }
+
+// --- functions accessing coef[o]
+
+static inline ctpsa_t* // clear TPSA order but doesn't adjust lo,hi
+mad_ctpsa_clear0 (ctpsa_t *t, ord_t o)
+{
+  assert(t);
+  TPSA_SCAN_O(t,o) t->coef[i] = 0;
+  return t;
+}
+
+static inline ctpsa_t* // update TPSA order from coefs but doesn't adjust lo,hi
+mad_ctpsa_update0 (ctpsa_t *t, ord_t o)
+{
+  assert(t);
+  const idx_t *o2i = t->d->ord2idx;
+  idx_t i = o2i[o], ni = o2i[o+1]-1;
+  cpx_t c = t->coef[ni]; t->coef[ni] = 1; // set stopper
+  while (!t->coef[i]) ++i;
+  if (i == ni && !c) t->nz = mad_bit_clr(t->nz,o);
+  t->coef[ni] = c; // restore value
+  return t;
+}
+
+static inline ctpsa_t* // round TPSA coefs with magnitude below eps to zero
+mad_ctpsa_stabilize0 (ctpsa_t *t, ord_t o, num_t eps)
+{
+  assert(t);
+  log_t nz = 0;
+  TPSA_SCAN_O(t,o)
+    if (fabs(creal(t->coef[i])) < eps &&
+        fabs(cimag(t->coef[i])) < eps) t->coef[i] = 0;
+    else nz |= !!t->coef[i];
+  if (!nz) t->nz = mad_bit_clr(t->nz,o);
+  return t;
+}
+
+// --- temporaries ------------------------------------------------------------o
+
+#if DESC_USE_TMP
 
 static inline ctpsa_t*
 mad_ctpsa_gettmp (const ctpsa_t *t, const str_t func)
 {
+  assert(t);
   const desc_t *d = t->d;
   int tid = omp_get_thread_num();
   assert(d->cti[tid] < DESC_MAX_TMP);
@@ -118,6 +154,7 @@ mad_ctpsa_gettmp (const ctpsa_t *t, const str_t func)
 static inline void
 mad_ctpsa_reltmp (ctpsa_t *tmp, const str_t func)
 {
+  assert(tmp);
   const desc_t *d = tmp->d;
   int tid = omp_get_thread_num();
   TRC_TMPX(printf("REL_TMPX%d[%d]: %p in %s(c)\n",
@@ -131,6 +168,8 @@ mad_ctpsa_gettmpt (const tpsa_t *t, const str_t func)
 {
   return mad_ctpsa_gettmp((const ctpsa_t*)t, func);
 }
+
+#endif // DESC_USE_TMP
 
 // --- end --------------------------------------------------------------------o
 

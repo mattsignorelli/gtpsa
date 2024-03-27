@@ -16,14 +16,10 @@
  o-----------------------------------------------------------------------------o
 */
 
-#include <math.h>
 #include <float.h>
 #include <string.h>
-#include <assert.h>
 
 #include "mad_mem.h"
-#include "mad_desc_impl.h"
-
 #ifdef    MAD_CTPSA_IMPL
 #include "mad_ctpsa_impl.h"
 #else
@@ -328,8 +324,7 @@ FUN(liebra) (ssz_t na, const T *ma[na], const T *mb[na], T *mc[na])
 void
 FUN(fgrad) (ssz_t na, const T *ma[na], const T *b, T *c)
 {
-  DBGFUN(->);
-  assert(ma && b && c);
+  assert(ma && b && c); DBGFUN(->);
   check_same_desc(na,(const T**)ma);
   ensure(ma[0]->d == b->d, "incompatibles GTPSA (descriptors differ)");
   ensure(ma[0]->d == c->d, "incompatibles GTPSA (descriptors differ)");
@@ -351,8 +346,7 @@ FUN(fgrad) (ssz_t na, const T *ma[na], const T *b, T *c)
 void // compute G(x;0) = -J grad.f(x;0) (eq. 34),
 FUN(vec2fld) (ssz_t nc, const T *a, T *mc[nc]) // pbbra
 {
-  DBGFUN(->);
-  assert(a && mc);
+  assert(a && mc); DBGFUN(->);
   check_same_desc(nc,(const T**)mc);
   ensure(a->d == mc[0]->d, "incompatibles GTPSA (descriptors differ)");
   const D *d = a->d;
@@ -364,15 +358,13 @@ FUN(vec2fld) (ssz_t nc, const T *a, T *mc[nc]) // pbbra
     FUN(poisbra)(a, t, mc[i], 0);
   }
 
-  FUN(del)(t);
-  DBGFUN(<-);
+  FUN(del)(t); DBGFUN(<-);
 }
 
 void // compute f(x;0) = \int_0^x J G(x';0) dx' = x^t J phi G(x;0) (eq. 34, 36 & 37)
 FUN(fld2vec) (ssz_t na, const T *ma[na], T *c) // getpb
 {
-  DBGFUN(->);
-  assert(ma && c);
+  assert(ma && c); DBGFUN(->);
   check_same_desc(na, ma);
   ensure(ma[0]->d == c->d, "incompatibles GTPSA (descriptors differ)");
   const D *d = ma[0]->d;
@@ -397,27 +389,28 @@ FUN(fld2vec) (ssz_t na, const T *ma[na], T *c) // getpb
   DBGFUN(<-);
 }
 
+ord_t
+FUN(mord) (ssz_t n, const T *t[n], log_t hi)
+{
+  assert(t); DBGFUN(->);
+  ord_t mx = 0;
+  if (hi) { FOR(i,n) if (t[i]->hi > mx) mx = t[i]->hi; }
+  else    { FOR(i,n) if (t[i]->mo > mx) mx = t[i]->mo; }
+  DBGFUN(<-); return mx;
+}
+
 num_t
 FUN(mnrm) (ssz_t na, const T *ma[na])
 {
-  DBGFUN(->);
-  assert(ma);
-
-  num_t nrm = 0;
-  FOR(i,na) {
-    DBGTPSA(ma[i]);
-    nrm += FUN(nrm)(ma[i]);
-  }
-
-  DBGFUN(<-);
-  return nrm;
+  assert(ma); DBGFUN(->);
+  num_t nrm = mnrm(na,ma);
+  DBGFUN(<-); return nrm;
 }
 
 void // convert maps to another maps using tpsa conversion.
 FUN(mconv) (ssz_t na, const T *ma[na], ssz_t nc, T *mc[nc], ssz_t n, idx_t t2r_[n], int pb)
 {
-  DBGFUN(->);
-  assert(ma && mc);
+  assert(ma && mc); DBGFUN(->);
 
   if (!t2r_) {
     ssz_t nn = MIN(na,nc);
@@ -428,7 +421,7 @@ FUN(mconv) (ssz_t na, const T *ma[na], ssz_t nc, T *mc[nc], ssz_t n, idx_t t2r_[
   FOR(i,MIN(n,na)) {
     idx_t ii = t2r_[i];
     if (ii < 0) continue; // discard var
-    ensure(0 <= ii && ii < nc, "translation index out of range 0 <= %d < %d", ii, nc);
+    ensure(0 <= ii && ii < nc, "translation index out of range 0<= %d <%d", ii, nc);
     FUN(convert)(ma[i], mc[ii], n, t2r_, pb);
     int ss = (ii-i)%2 * pb;
     if (ss == -1) FUN(scl)(mc[ii], -1, mc[ii]);
@@ -436,7 +429,6 @@ FUN(mconv) (ssz_t na, const T *ma[na], ssz_t nc, T *mc[nc], ssz_t n, idx_t t2r_[
     printf("cvt: % 2d -> % d x % 2d [pb=% d]\n", i, ss, ii, pb);
 #endif
   }
-
   DBGFUN(<-);
 }
 

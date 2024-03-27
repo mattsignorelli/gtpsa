@@ -17,13 +17,9 @@
  o-----------------------------------------------------------------------------o
 */
 
-#include <math.h>
 #include <string.h>
-#include <assert.h>
 
 #include "mad_mem.h"
-#include "mad_desc_impl.h"
-
 #ifdef    MAD_CTPSA_IMPL
 #include "mad_ctpsa_impl.h"
 #else
@@ -95,8 +91,7 @@ FUN(compose) (ssz_t sa, const T *ma[sa], ssz_t sb, const T *mb[sb], T *mc[sa])
     mc_[ic] = FUN(newd)(d, d->to);
   }
 
-  ord_t hi_ord = 0;
-  FOR(i,sa) if (ma[i]->hi > hi_ord) hi_ord = ma[i]->hi;
+  ord_t hi_ord = FUN(mord)(sa,ma,TRUE);
   hi_ord = MIN(hi_ord, d->to);
 
   #ifdef _OPENMP
@@ -157,12 +152,12 @@ FUN(eval) (ssz_t sa, const T *ma[sa], ssz_t sb, const NUM tb[sb], NUM tc[sa])
   mad_alloc_tmp(      T*, mc, sa);
   FOR(ib,sb) {
     T *t = FUN(newd)(ma[0]->d, 0);
-    FUN(setvar)(t, tb[ib], 0,0);
+    FUN(setval)(t, tb[ib]);
     mb[ib] = t;
   }
   FOR(ic,sa) {
     T *t = FUN(newd)(ma[0]->d, 0);
-    FUN(setvar)(t, tc[ic], 0,0);
+    FUN(setval)(t, tc[ic]);
     mc[ic] = t;
   }
 

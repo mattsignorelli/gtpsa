@@ -88,7 +88,7 @@ void     mad_ctpsa_del  (const ctpsa_t *t);
 
 // --- TPSA sanity checks -----------------------------------------------------o
 
-#define DEBUG 0
+#define DEBUG 2
 
 #if DEBUG > 0
 #  define DBGTPSA(t) FUN(debug)(t,#t,__func__,__LINE__,0)

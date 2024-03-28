@@ -49,7 +49,11 @@ FUN(check) (const T *t, ord_t *o_, idx_t *i_)
   if (!t->d || t->mo > t->d->mo || t->hi > t->mo ||
       (t->lo > t->hi && t->lo != 1)) goto ret;
 
+#ifdef    MAD_CTPSA_IMPL
+  if (isnan(__real__ t->coef[0]) || isnan(__imag__ t->coef[0])) { _i = 0; goto ret; }
+#else
   if (isnan(t->coef[0])) { _i = 0; goto ret; }
+#endif
 
   FOR(o,t->lo)
     if (mad_bit_tst(t->nz,o)) { _o = o; goto ret; }

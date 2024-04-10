@@ -39,7 +39,7 @@ enum { DESC_WARN_MONO  = 1000000, // warn if tpsa can have 1e6 coefs or more
 
 #define TPSA_DEBUG   0 // 1-3: print fname in/out, print TPSA content, more I/O
 #define DESC_DEBUG   0 // 1-3: print debug info during build
-#define DESC_USE_TMP 0 // 0: use new, 1: use TMP
+#define DESC_USE_TMP 1 // 0: use new, 1: use TMP
 
 // --- types ------------------------------------------------------------------o
 

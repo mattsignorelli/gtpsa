@@ -392,9 +392,10 @@ FUN(print) (const T *t, str_t name_, num_t eps, int nohdr, FILE *stream_)
   assert(t); DBGFUN(->);
   if (!name_  ) name_   = t->nam[0] ? t->nam : "-UNNAMED-";
   if (!stream_) stream_ = stdout;
+  if (eps < 0) eps = mad_tpsa_eps;
 
   // avoid to double debug TPSA (string start set by DBGTPSA)
-  if (strncmp(name_,"§@#$%^&*",8)) DBGTPSA(t);
+  if (strncmp(name_,"@#$&",4)) DBGTPSA(t); else name_ += 4;
 
 #ifndef MAD_CTPSA_IMPL
   const char typ = 'R';

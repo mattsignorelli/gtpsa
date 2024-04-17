@@ -40,8 +40,9 @@
 // must be global variables for access from LuaJIT FFI.
 const  ord_t  mad_tpsa_dflt = -1;
 const  ord_t  mad_tpsa_same = -2;
-       log_t  mad_tpsa_dbgf = FALSE; // effective only with DEBUG > 1
-       log_t  mad_tpsa_dbga = FALSE; // effective only with DEBUG > 2
+       num_t  mad_tpsa_eps  = 1e-40;
+       int    mad_tpsa_dbgf =  0; // effective only with TPSA_DEBUG > 0
+       int    mad_tpsa_dbga =  0; // effective only with TPSA_DEBUG > 0
 
 // last descriptor created or searched (used to create GTPSA when d is NULL)
 const desc_t *mad_desc_curr = NULL;
@@ -954,7 +955,6 @@ desc_init (int nn, ord_t mo, int np, ord_t po, const ord_t no_[nn])
   d->nv = nn-np;
   d->mo = mo;
   d->po = po;
-  d->to = mo;
 
   ord_t *no = mad_malloc(nn * sizeof *d->no);
   d->size += nn * sizeof *d->no;
@@ -1187,28 +1187,14 @@ mad_desc_maxlen (const D *d, ord_t mo)
   DBGFUN(<-); return d->ord2idx[mo+1];
 }
 
-ord_t
-mad_desc_gtrunc (const D *d, ord_t to)
-{
-  assert(d);
-  if (to == mad_tpsa_same) return d->to;
-
-  DBGFUN(->);
-  if (to == mad_tpsa_dflt) to = d->mo; else
-  ensure(to <= d->mo, "invalid order %d (exceeds maximum order %d)", to,d->mo);
-  const ord_t old = d->to;
-  ((D*)d)->to = to;
-  DBGFUN(<-); return old;
-}
-
 void
 mad_desc_info (const D *d, FILE *fp_)
 {
   assert(d); DBGFUN(->);
   char s[d->nn+1];
   fprintf(fp_ ? fp_ : stdout,
-          "id=%d, nn=%d, nv=%d, np=%d, mo=%d, po=%d, to=%d, uno=%d, no=[%s]\n",
-           d->id, d->nn, d->nv, d->np, d->mo, d->po, d->to, d->uno,
+          "id=%d, nn=%d, nv=%d, np=%d, mo=%d, po=%d, uno=%d, no=[%s]\n",
+           d->id, d->nn, d->nv, d->np, d->mo, d->po, d->uno,
            mad_mono_prt(d->nn, d->no, s));
   DBGFUN(<-);
 }

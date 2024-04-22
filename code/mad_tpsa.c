@@ -39,8 +39,9 @@
 
 // --- debugging --------------------------------------------------------------o
 
-static long ratio_nz[11] = {0};
-static long ratio_nn[11] = {0};
+// histogram by deciles 0..10
+static long long ratio_nz[11] = {0};
+static long long ratio_nn[11] = {0};
 
 static inline num_t
 ratio (const T *t, num_t eps_)
@@ -48,15 +49,16 @@ ratio (const T *t, num_t eps_)
   if (!t->hi) return -1;
   num_t eps = eps_ ? eps_ : mad_tpsa_eps;
 
-  long nz = 0;
+  long  nz = 0;
   TPSA_SCAN(t) if (fabs(t->coef[i]) >= eps) ++nz;
-  num_t r = (num_t)nz / (o2i[t->hi+1] - o2i[t->lo]);
+  long  nn = o2i[t->hi+1] - o2i[t->lo];
+  num_t rr = (num_t)nz / nn;
 
-  int i = r*10;
+  int i = rr*10;
   assert(0 <= i && i <= 10);
   ratio_nz[i] += nz;
-  ratio_nn[i] += o2i[t->hi+1] - o2i[t->lo];
-  return r;
+  ratio_nn[i] += nn;
+  return rr;
 }
 
 static inline log_t
@@ -92,11 +94,10 @@ int
 FUN(debug) (const T *t, str_t name_, str_t fname_, int line_, FILE *stream_)
 {
   assert(t);
-  ord_t o;
-  num_t r = 0;
-  log_t ok = check(t,&o, mad_tpsa_dbga > 1 ? &r : 0);// dbga = 2..3 -> ratio
+  ord_t o; num_t r = 0;
+  log_t ok = check(t,&o, mad_tpsa_dbga >= 2 ? &r : 0);  // dbga = 2..3 -> ratio
 
-  if (ok && mad_tpsa_dbga < 3) return ok;            // dbga = 1..2 -> no prn
+  if (ok && mad_tpsa_dbga <= 2) return ok;              // dbga = 1..2 -> no prn
 
   const D* d = t->d;
   if (!stream_) stream_ = stdout;
@@ -106,17 +107,15 @@ FUN(debug) (const T *t, str_t name_, str_t fname_, int line_, FILE *stream_)
           t->lo, t->hi, t->mo, t->ao, t->uid, d ? d->id : -1);
 
   if (ok) {
-    fprintf(stream_," r=%.2f }\n", r); fflush(stream_);
+    fprintf(stream_," r=%.2f } 0x%p\n", r, (void*)t); fflush(stream_);
 
-    if (mad_tpsa_dbga > 1) {
-      char name[48] = "@#$&";
-      strncpy(name+4, name_ ? name_ : t->nam, 44); name[47] = '\0';
-      FUN(print)(t, name, 1e-40, 0, stream_);
-    }
+    char name[48];
+    strncpy(name, name_ ? name_ : t->nam, 48); name[47] = '\0';
+    FUN(print)(t, name, 1e-40, 0, stream_);
     return ok;
   }
 
-  fprintf(stream_," ** bug @ o=%d }\n", o); fflush(stream_);
+  fprintf(stream_," ** bug @ o=%d } 0x%p\n", o, (void*)t); fflush(stream_);
 
   if (d) {
     const idx_t *o2i = d->ord2idx;
@@ -124,9 +123,38 @@ FUN(debug) (const T *t, str_t name_, str_t fname_, int line_, FILE *stream_)
     FOR(i,ni) fprintf(stream_," [%d:%d]=" FMT "\n", i,d->ords[i],VAL(t->coef[i]));
     fprintf(stream_,"\n"); fflush(stream_);
   }
-  ensure(ok, "corrupted TPSA detected");
-  return ok;
+
+  ensure(ok, "corrupted TPSA detected"); return ok;
 }
+
+#ifndef MAD_CTPSA_IMPL
+void
+mad_tpsa_clrdensity (void)
+{
+  FOR(i,11) ratio_nz[i] = ratio_nn[i] = 0;
+}
+
+void
+mad_tpsa_prtdensity (FILE *stream_)
+{
+  if (!stream_) stream_ = stdout;
+  long long sum_nn = 0, sum_nz = 0;
+  FOR(i,11) sum_nz += ratio_nz[i], sum_nn += ratio_nn[i];
+  if (!sum_nn) { fprintf(stream_,"no tpsa density available.\n"); return; }
+
+  fprintf(stream_,"tpsa average density:\n");
+  FOR(i,11) {
+    ensure(ratio_nz[i] <= ratio_nn[i], "unexpect ratio > 1");
+    fprintf(stream_,"i=%2d: nz=%15lld, nn=%15lld, r=%6.2f, p=%6.2f%%\n",
+      i, ratio_nz[i], ratio_nn[i],
+      ratio_nn[i] ? 10*(num_t)ratio_nz[i]/ratio_nn[i] : 0,
+      100*(num_t)ratio_nn[i]/sum_nn);
+  }
+  fprintf(stream_,"total nz=%15lld, nn=%15lld, r=%6.2f\n",
+          sum_nz, sum_nn, 10*(num_t)sum_nz/sum_nn);
+  fflush(stream_);
+}
+#endif
 
 // --- introspection ----------------------------------------------------------o
 
@@ -142,16 +170,13 @@ FUN(mo) (T *t, ord_t mo_)
 {
   assert(t);
   if (mo_ == mad_tpsa_same) return t->mo;
-  if (mo_ == mad_tpsa_dflt) mo_ = t->ao;
 
-  ensure(mo_ <= t->d->mo, "invalid order %d (exceeds maximum order %d)", mo_, t->d->mo);
   ord_t ret = t->mo;
-  if (mo_ <= t->ao) {
-    t->lo = MIN(t->lo,mo_);
-    t->hi = MIN(t->hi,mo_);
-    t->mo = mo_;
-  }
-  return ret; // return previous mo, e.g. mo_ == mad_tpsa_same
+  if (mo_ < t->mo)
+    t->lo = MIN(t->lo, mo_), t->hi = MIN(t->hi, mo_), t->mo = mo_;
+  else
+    t->mo = MIN(mo_, t->ao);
+  return ret;
 }
 
 int32_t
@@ -206,41 +231,14 @@ FUN(density) (const T *t, num_t eps)
   return ratio(t,eps);
 }
 
-#ifndef MAD_CTPSA_IMPL
-void
-mad_tpsa_clrdensity (void)
-{
-  FOR(i,11) ratio_nz[i] = ratio_nn[i] = 0;
-}
-
-void
-mad_tpsa_prtdensity (FILE *stream_)
-{
-  if (!stream_) stream_ = stdout;
-  long sum = 0;
-  FOR(i,11) sum += ratio_nn[i];
-  if (!sum) { fprintf(stream_,"no tpsa density available.\n"); return; }
-
-  fprintf(stream_,"tpsa average density:\n");
-  FOR(i,11) {
-    ensure(ratio_nz[i] <= ratio_nn[i], "unexpect ratio > 1");
-    fprintf(stream_,"i=%2d, nz=%15ld, nn=%15ld, r=%6.2f, p=%6.2f%%\n",
-      i,ratio_nz[i],ratio_nn[i],
-      ratio_nn[i] ? 10*(num_t)ratio_nz[i]/ratio_nn[i] : 0,
-      100*(num_t)ratio_nn[i]/sum);
-  }
-  fprintf(stream_,"\n"); fflush(stream_);
-}
-#endif
-
 // --- init (unsafe) ----------------------------------------------------------o
 
 T*
 FUN(init) (T *t, const D *d, ord_t mo)
 {
   assert(t && d && mo <= d->mo); DBGFUN(->);
-  FUN(reset0)(t)->d = d, t->uid = 0, t->ao = t->mo = mo, t->nam[0] = 0;
-  DBGFUN(<-); return t;
+  t->d = d, t->ao = t->mo = mo, t->uid = 0, t->nam[0] = 0, FUN(reset0)(t);
+  DBGTPSA(t); DBGFUN(<-); return t;
 }
 
 // --- ctors, dtor ------------------------------------------------------------o
@@ -250,27 +248,23 @@ FUN(newd) (const D *d, ord_t mo)
 {
   assert(d); DBGFUN(->);
   mo = MIN(mo, d->mo);
-  T *t = mad_malloc(sizeof(T) + d->ord2idx[mo+1] * sizeof(NUM)); assert(t);
-  FUN(reset0)(t)->d = d, t->uid = 0, t->ao = t->mo = mo, t->nam[0] = 0;
-  DBGFUN(<-); return t;
+  T *r = mad_malloc(sizeof(T) + d->ord2idx[mo+1] * sizeof(NUM)); assert(r);
+  r->d = d, r->ao = r->mo = mo, r->uid = 0, r->nam[0] = 0, FUN(reset0)(r);
+  DBGTPSA(r); DBGFUN(<-); return r;
 }
 
 T*
-FUN(new) (const T *r, ord_t mo)
+FUN(new) (const T *t, ord_t mo)
 {
-  assert(r); DBGFUN(->);
-  const D *d = r->d;
-  mo = mo == mad_tpsa_same ? r->mo : MIN(mo, d->mo);
-  T *t = mad_malloc(sizeof(T) + d->ord2idx[mo+1] * sizeof(NUM)); assert(t);
-  FUN(reset0)(t)->d = d, t->uid = 0, t->ao = t->mo = mo, t->nam[0] = 0;
-  DBGFUN(<-); return t;
+  assert(t);
+  return FUN(newd)(t->d, mo == mad_tpsa_same ? t->mo : mo);
 }
 
 void
 FUN(del) (const T *t)
 {
   DBGFUN(->);
-  if (t) mad_free((void*)t);
+  mad_free((void*)t);
   DBGFUN(<-);
 }
 
@@ -281,18 +275,20 @@ FUN(clear) (T *t)
 {
   assert(t); DBGFUN(->);
   FUN(reset0)(t);
-  DBGFUN(<-);
+  DBGTPSA(t); DBGFUN(<-);
 }
 
 void
 FUN(update) (T *t)
 {
   assert(t); DBGFUN(->);
-  const ord_t *ords = t->d->ords;
-  idx_t j;
-  if ((j=FUN(nzero0 )(t,t->lo,        t->hi)) > 0 &&
-      (j=FUN(nzero0r)(t,t->lo=ords[j],t->hi)) > 0) t->hi=ords[j];
-  else t->lo=1, t->hi=0; // see reset0
+  if (t->hi) {
+    const ord_t *ords = t->d->ords;
+    idx_t j;
+    if ((j=FUN(nzero0 )(t,t->lo,        t->hi)) > 0 &&
+        (j=FUN(nzero0r)(t,t->lo=ords[j],t->hi)) > 0) t->hi=ords[j];
+    else t->lo=1, t->hi=0;
+  }
   DBGTPSA(t); DBGFUN(<-);
 }
 
@@ -300,20 +296,12 @@ void
 FUN(setvar) (T *t, NUM v, idx_t iv, NUM scl)
 {
   assert(t); DBGFUN(->);
-  const D *d = t->d;
-
   ensure(t->mo >= 1, "variables must have an order >= 1, got %d", t->mo);
-  ensure(0 < iv && iv <= d->nv,
-         "index 1<= %d <=%d is not a GTPSA variable", iv, d->nv);
+  ensure(0 < iv && iv <= t->d->nv,
+         "index 1<= %d <=%d is not a GTPSA variable", iv, t->d->nv);
 
-  // set zero order
-  t->coef[0] = v;
-
-  // clear first order
-  FUN(clear0)(t,1,1);
-
-  // set lo, hi, coef[iv]
-  t->lo = t->hi = 1, t->coef[iv] = scl ? scl : 1;
+  t->lo = t->hi = 1, t->coef[0] = v;
+  FUN(clear0)(t,1,1), t->coef[iv] = scl ? scl : 1;
   DBGTPSA(t); DBGFUN(<-);
 }
 
@@ -321,20 +309,12 @@ void
 FUN(setprm) (T *t, NUM v, idx_t ip)
 {
   assert(t); DBGFUN(->);
-  const D *d = t->d;
-
   ensure(t->mo == 1 , "parameters must be a GPTSA of order 1, got %d", t->mo);
-  ensure(0 < ip && ip <= d->np,
-         "index 1<= %d <=%d is not a GPTSA parameter", ip, d->np);
+  ensure(0 < ip && ip <= t->d->np,
+         "index 1<= %d <=%d is not a GPTSA parameter", ip, t->d->np);
 
-  // set zero order
-  t->coef[0] = v;
-
-  // clear first order
-  FUN(clear0)(t,1,1);
-
-  // set lo, hi, coef[ip]
-  t->lo = t->hi = 1, t->coef[ip+d->nv] = 1;
+  t->lo = t->hi = 1, t->coef[0] = v;
+  FUN(clear0)(t,1,1), t->coef[ip+t->d->nv] = 1;
   DBGTPSA(t); DBGFUN(<-);
 }
 
@@ -343,7 +323,7 @@ FUN(setval) (T *t, NUM v)
 {
   assert(t); DBGFUN(->);
   t->lo = 1, t->hi = 0, t->coef[0] = v;
-  DBGFUN(<-);
+  DBGTPSA(t); DBGFUN(<-);
 }
 
 // --- copy, convert, swap ----------------------------------------------------o
@@ -351,18 +331,12 @@ FUN(setval) (T *t, NUM v)
 void
 FUN(copy) (const T *t, T *r)
 {
-  assert(t && r); DBGFUN(->); DBGTPSA(t);
-  const D *d = t->d;
-  ensure(d == r->d, "incompatible GTPSAs descriptors 0x%p vs 0x%p", d, r->d);
+  assert(t && r); DBGFUN(->);
+  ensure(t->d == r->d, "incompatible GTPSAs descriptors 0x%p vs 0x%p", t->d, r->d);
 
   if (t != r) {
-    // copy lo, hi
     FUN(copy0)(t, r);
-
-    // copy coef[0]
     r->coef[0] = t->coef[0];
-
-    // copy coefs
     TPSA_SCAN(r) r->coef[i] = t->coef[i];
   }
   DBGTPSA(r); DBGFUN(<-);
@@ -371,18 +345,17 @@ FUN(copy) (const T *t, T *r)
 void
 FUN(sclord) (const T *t, T *r, log_t inv, log_t prm)
 {
-  assert(t && r); DBGFUN(->); DBGTPSA(t);
+  assert(t && r); DBGFUN(->);
 
   FUN(copy)(t,r);
 
-  const int    np = !prm;
+  const int    np = !prm; // do not consider parameters orders
   const ord_t *po = r->d->prms, lo = MAX(r->lo,2);
   if (inv) { // scale coefs by 1/order
     TPSA_SCAN_Z(r,lo,r->hi) TPSA_SCAN_O(r) r->coef[i] /= o - po[i] * np;
   } else {   // scale coefs by order
     TPSA_SCAN_Z(r,lo,r->hi) TPSA_SCAN_O(r) r->coef[i] *= o - po[i] * np;
   }
-
   DBGTPSA(r); DBGFUN(<-);
 }
 
@@ -390,33 +363,27 @@ void
 FUN(clrord) (T *t, ord_t o)
 {
   assert(t); DBGFUN(->);
-  const D *d = t->d;
-
   idx_t j = 0;
-  if (!o) t->coef[0] = 0;                                                      else
-  if (o  > t->lo && o < t->hi) FUN(clear0)(t, o, o);                           else
-  if (o == t->lo && (j=FUN(nzero0 )(t,t->lo+1,t->hi)) > 0) t->lo = d->ords[j]; else
-  if (o == t->hi && (j=FUN(nzero0r)(t,t->lo,t->hi-1)) > 0) t->hi = d->ords[j]; else
-  if (j < 0) t->lo = 1, t->hi = 0; // see reset0
+  if (!o) t->coef[0] = 0;                                                         else
+  if (o  > t->lo && o < t->hi) FUN(clear0)(t, o, o);                              else
+  if (o == t->lo && (j=FUN(nzero0 )(t,t->lo+1,t->hi)) > 0) t->lo = t->d->ords[j]; else
+  if (o == t->hi && (j=FUN(nzero0r)(t,t->lo,t->hi-1)) > 0) t->hi = t->d->ords[j]; else
+  if (j < 0) t->lo = 1, t->hi = 0;
   DBGTPSA(t); DBGFUN(<-);
 }
 
 void
 FUN(getord) (const T *t, T *r, ord_t o)
 {
-  assert(t && r); DBGFUN(->); DBGTPSA(t);
-  const D *d = t->d;
-  ensure(d == r->d, "incompatible GTPSAs descriptors 0x%p vs 0x%p", d, r->d);
+  assert(t && r); DBGFUN(->);
+  ensure(t->d == r->d, "incompatible GTPSAs descriptors 0x%p vs 0x%p", t->d, r->d);
 
   if (o < t->lo || o > MIN(t->hi, r->mo)) {
     FUN(setval)(r, o ? 0 : t->coef[0]);
     DBGFUN(<-); return;
   }
 
-  // set coef[0], lo, hi
-  r->coef[0] = 0, r->lo = r->hi = o;
-
-  // copy data
+  r->lo = r->hi = o, r->coef[0] = 0;
   if (t != r) { TPSA_SCAN_O(r, o) r->coef[i] = t->coef[i]; }
 
   DBGTPSA(r); DBGFUN(<-);
@@ -425,22 +392,21 @@ FUN(getord) (const T *t, T *r, ord_t o)
 void
 FUN(cutord) (const T *t, T *r, int o)
 {
-  assert(t && r); DBGFUN(->); DBGTPSA(t);
-  const D *d = t->d;
-  ensure(d == r->d, "incompatible GTPSAs descriptors 0x%p vs 0x%p", d, r->d);
+  assert(t && r); DBGFUN(->);
+  ensure(t->d == r->d, "incompatible GTPSAs descriptors 0x%p vs 0x%p", t->d, r->d);
 
-  if (o <= 0) { // cut 0..|o|, see copy0 with t->lo = |o|+1
-    r->lo = 1-o;                    // min 1 -> keep 1..
+  if (o <= 0) {    // cut 0..|o|, see copy0 with t->lo = |o|+1
+    r->lo = 1-o;             // min 1 -> keep 1..
     r->hi = MIN(t->hi, r->mo);
     r->coef[0] = 0;
-  } else {      // cut |o|..mo, see copy0 with t->hi = |o|-1
+  } else {         // cut |o|..mo, see copy0 with t->hi = |o|-1
     r->lo = t->lo;
     r->hi = MIN(o-1, r->mo); // min 0 -> cut 1..
     r->coef[0] = t->coef[0];
   }
 
   if (r->lo > r->hi) FUN(setval)(r, r->coef[0]); else
-  if (r != t) { TPSA_SCAN(r) r->coef[i] = t->coef[i]; } // copy data
+  if (r != t) { TPSA_SCAN(r) r->coef[i] = t->coef[i]; }
 
   DBGTPSA(r); DBGFUN(<-);
 }
@@ -448,7 +414,7 @@ FUN(cutord) (const T *t, T *r, int o)
 idx_t
 FUN(maxord) (const T *t, ssz_t n, idx_t idx_[n])
 {
-  assert(t); DBGFUN(->); DBGTPSA(t);
+  assert(t); DBGFUN(->);
 
   if (idx_) { FOR(i,n) idx_[i] = -1; idx_[0] = 0; }
 
@@ -470,25 +436,23 @@ FUN(maxord) (const T *t, ssz_t n, idx_t idx_[n])
 idx_t
 FUN(cycle) (const T *t, idx_t i, ssz_t n, ord_t m_[n], NUM *v_)
 {
-  assert(t); DBGFUN(->); DBGTPSA(t);
-  const D *d = t->d;
-  const idx_t *o2i = d->ord2idx;
-  idx_t ni = o2i[t->hi+1];
+  assert(t); DBGFUN(->);
   if (++i <= 0 && t->coef[0]) { i = 0; goto ret; }
 
-  for (i=MAX(i,o2i[t->lo]); i < ni; i++) if (t->coef[i]) goto ret;
+  const idx_t *o2i = t->d->ord2idx;
+  for (i=MAX(i,o2i[t->lo]); i < o2i[t->hi+1]; i++) if (t->coef[i]) goto ret;
   DBGFUN(<-); return -1;
 
 ret:
   if (v_) *v_ = t->coef[i];
-  if (m_) mad_mono_copy(MIN(n,d->nn), d->To[i], m_);
+  if (m_) mad_mono_copy(MIN(n,t->d->nn), t->d->To[i], m_);
   DBGFUN(<-); return i;
 }
 
 void
 FUN(convert) (const T *t, T *r_, ssz_t n, idx_t t2r_[n], int pb)
 {
-  assert(t && r_); DBGFUN(->); DBGTPSA(t);
+  assert(t && r_); DBGFUN(->);
   ensure(pb >= -1 && pb <= 1,
          "invalid Poisson bracket direction %d, {-1, 0, 1} expected", pb);
   const D *td = t->d, *rd = r_->d;
@@ -515,7 +479,7 @@ FUN(convert) (const T *t, T *r_, ssz_t n, idx_t t2r_[n], int pb)
 
   // convert t -> r
   const ord_t *ords = rd->ords;
-  const ord_t t_hi = MIN(t->hi, r->mo);             // see copy0
+  const ord_t t_hi = MIN(t->hi, r->mo);
   r->coef[0] = t->coef[0];
   TPSA_SCAN(t,t_hi) {
     if (!t->coef[i]) continue;
@@ -548,8 +512,7 @@ FUN(convert) (const T *t, T *r_, ssz_t n, idx_t t2r_[n], int pb)
   skip: ;
   }
 
-  if (r != r_) { FUN(copy)(r,r_); REL_TMPX(r); }
-
+  if (r != r_) { FUN(copy)(r,r_); REL_TMPX(r); } else
   DBGTPSA(r_); DBGFUN(<-);
 }
 
@@ -558,7 +521,7 @@ FUN(convert) (const T *t, T *r_, ssz_t n, idx_t t2r_[n], int pb)
 ord_t
 FUN(mono) (const T *t, idx_t i, ssz_t n, ord_t m_[n], ord_t *p_)
 {
-  assert(t); DBGTPSA(t);
+  assert(t);
   ord_t ret = mad_desc_mono(t->d, i, n, m_, p_);
   DBGFUN(<-); return ret;
 }
@@ -566,7 +529,7 @@ FUN(mono) (const T *t, idx_t i, ssz_t n, ord_t m_[n], ord_t *p_)
 idx_t
 FUN(idxs) (const T *t, ssz_t n, str_t s)
 {
-  assert(t && s); DBGTPSA(t);
+  assert(t && s);
   idx_t ret = mad_desc_idxs(t->d, n, s);
   DBGFUN(<-); return ret;
 }
@@ -574,7 +537,7 @@ FUN(idxs) (const T *t, ssz_t n, str_t s)
 idx_t
 FUN(idxm) (const T *t, ssz_t n, const ord_t m[n])
 {
-  assert(t && m); DBGTPSA(t);
+  assert(t && m);
   idx_t ret = mad_desc_idxm(t->d, n, m);
   DBGFUN(<-); return ret;
 }
@@ -582,7 +545,7 @@ FUN(idxm) (const T *t, ssz_t n, const ord_t m[n])
 idx_t
 FUN(idxsm) (const T *t, ssz_t n, const idx_t m[n])
 {
-  assert(t && m); DBGFUN(->); DBGTPSA(t);
+  assert(t && m); DBGFUN(->);
   idx_t ret = mad_desc_idxsm(t->d, n, m);
   DBGFUN(<-); return ret;
 }
@@ -592,23 +555,18 @@ FUN(idxsm) (const T *t, ssz_t n, const idx_t m[n])
 static inline NUM
 geti (const T *t, idx_t i)
 {
-  const D *d = t->d;
-  const ord_t o = d->ords[i];
+  const ord_t o = t->d->ords[i];
   return !o || (t->lo <= o && o <= t->hi) ? t->coef[i] : 0;
-}
-
-NUM
-FUN(get0) (const T *t)
-{
-  assert(t);
-  return t->coef[0];
 }
 
 NUM
 FUN(geti) (const T *t, idx_t i)
 {
-  assert(t); DBGFUN(->); DBGTPSA(t);
-  ensure(0 <= i && i < t->d->nc, "index %d out of bounds", i);
+  assert(t);
+  if (!i) return t->coef[0];
+
+  DBGFUN(->);
+  ensure(0 < i && i < t->d->nc, "index %d out of bounds", i);
   NUM ret = geti(t,i);
   DBGFUN(<-); return ret;
 }
@@ -616,7 +574,7 @@ FUN(geti) (const T *t, idx_t i)
 NUM
 FUN(gets) (const T *t, ssz_t n, str_t s)
 { // --- mono is a string; represented as "[0-9A-Z]*"
-  assert(t && s); DBGFUN(->); DBGTPSA(t);
+  assert(t && s); DBGFUN(->);
   idx_t i = mad_desc_idxs(t->d,n,s);
   ensure(i >= 0, "invalid monomial");
   NUM ret = geti(t,i);
@@ -626,7 +584,7 @@ FUN(gets) (const T *t, ssz_t n, str_t s)
 NUM
 FUN(getm) (const T *t, ssz_t n, const ord_t m[n])
 {
-  assert(t && m); DBGFUN(->); DBGTPSA(t);
+  assert(t && m); DBGFUN(->);
   idx_t i = mad_desc_idxm(t->d,n,m);
   ensure(i >= 0, "invalid monomial");
   NUM ret = geti(t,i);
@@ -636,7 +594,7 @@ FUN(getm) (const T *t, ssz_t n, const ord_t m[n])
 NUM
 FUN(getsm) (const T *t, ssz_t n, const idx_t m[n])
 { // --- mono is sparse; represented as [(i,o)]
-  assert(t && m); DBGFUN(->); DBGTPSA(t);
+  assert(t && m); DBGFUN(->);
   idx_t i = mad_desc_idxsm(t->d,n,m);
   ensure(i >= 0, "invalid monomial");
   NUM ret = geti(t,i);
@@ -661,15 +619,13 @@ FUN(getsm) (const T *t, ssz_t n, const idx_t m[n])
 void
 FUN(getv) (const T *t, idx_t i, ssz_t n, NUM v[n])
 {
-  assert(t && v); DBGFUN(->); DBGTPSA(t);
+  if (n <= 0) return;
+  assert(t && v); DBGFUN(->);
   ssz_t nn = i+n;
-  const D *d = t->d;
-  ensure(0 <= i && nn <= d->nc, "indexes %d:%d out of bounds", i, nn);
+  ensure(0 <= i && nn <= t->d->nc, "indexes %d:%d out of bounds", i, nn);
 
-  if (!n) { DBGFUN(<-); return; }
-
-  const ord_t *ord = d->ords;
-  const idx_t *o2i = d->ord2idx;
+  const ord_t *ord = t->d->ords;
+  const idx_t *o2i = t->d->ord2idx;
   ord_t lo = t->lo;
   ord_t hi = MIN(ord[nn-1], t->hi);
 
@@ -693,18 +649,12 @@ FUN(getv) (const T *t, idx_t i, ssz_t n, NUM v[n])
 // --- setters ----------------------------------------------------------------o
 
 void
-FUN(set0) (T *t, NUM a, NUM b)
-{
-  assert(t);
-  t->coef[0] = a*t->coef[0] + b;
-}
-
-void
 FUN(seti) (T *t, idx_t i, NUM a, NUM b)
 {
-  assert(t); DBGFUN(->); DBGTPSA(t);
-  if (!i) { FUN(set0)(t,a,b); DBGFUN(<-); return; }
+  assert(t);
+  if (!i) { t->coef[0] = a*t->coef[0]+b; return; }
 
+  DBGFUN(->);
   const D *d = t->d;
   ensure(0 < i && i < d->nc, "index %d out of bounds", i);
 
@@ -726,12 +676,6 @@ FUN(seti) (T *t, idx_t i, NUM a, NUM b)
     if (o == t->hi && (j=FUN(nzero0r)(t,t->lo,t->hi)) > 0) t->hi = d->ords[j]; else
     if (j <= 0) t->lo = 1, t->hi = 0;
   }
-
-#if 0
-  if (!check(t,0,0))
-    printf(" o=%d, v= %-.16e%+.16ei\n", o, creal(v), cimag(v));
-#endif
-
   DBGTPSA(t); DBGFUN(<-);
 }
 
@@ -783,15 +727,13 @@ FUN(setsm) (T *t, ssz_t n, const idx_t m[n], NUM a, NUM b)
 void
 FUN(setv) (T *t, idx_t i, ssz_t n, const NUM v[n])
 {
-  assert(t && v); DBGFUN(->); DBGTPSA(t);
+  if (n <= 0) return;
+  assert(t && v); DBGFUN(->);
   ssz_t nn = i+n;
-  const D *d = t->d;
-  ensure(0 <= i && nn <= d->nc, "indexes %d:%d out of bounds", i, nn);
+  ensure(0 <= i && nn <= t->d->nc, "indexes %d:%d out of bounds", i, nn);
 
-  if (!n) { DBGFUN(<-); return; }
-
-  const ord_t *ord = d->ords;
-  const idx_t *o2i = d->ord2idx;
+  const ord_t *ord = t->d->ords;
+  const idx_t *o2i = t->d->ord2idx;
   ord_t lo = MAX(ord[i],1);
   ord_t hi = MIN(ord[nn-1], t->mo);
 
@@ -812,24 +754,19 @@ FUN(setv) (T *t, idx_t i, ssz_t n, const NUM v[n])
   if (t->lo > lo) t->lo = lo;
   if (t->hi < hi) t->hi = hi;
 
-  // v may contain zeros...
-  FUN(update)(t);
+  FUN(update)(t); // v may contain zeros...
   DBGFUN(<-); return;
 }
 
 // --- copiers ----------------------------------------------------------------o
 
 void
-FUN(cpy0) (const T *t, T *r)
-{
-  assert(t && r);
-  FUN(setval)(r, t->coef[0]);
-}
-
-void
 FUN(cpyi) (const T *t, T *r, idx_t i)
 {
-  assert(t && r); DBGFUN(->); DBGTPSA(t);
+  assert(t && r);
+  if (!i) { FUN(setval)(r, t->coef[0]); return; }
+
+  DBGFUN(->);
   ensure(t->d == r->d, "incompatible GTPSAs descriptors 0x%p vs 0x%p",t->d,r->d);
   ensure(0 <= i && i < t->d->nc, "index %d out of bounds", i);
   NUM v = geti(t,i); FUN(reset0)(r); if (v) FUN(seti)(r,i,0,v);
@@ -839,7 +776,7 @@ FUN(cpyi) (const T *t, T *r, idx_t i)
 void
 FUN(cpys) (const T *t, T *r, ssz_t n, str_t s)
 {
-  assert(t && r && s); DBGFUN(->); DBGTPSA(t);
+  assert(t && r && s); DBGFUN(->);
   ensure(t->d == r->d, "incompatible GTPSAs descriptors 0x%p vs 0x%p",t->d,r->d);
   idx_t i = mad_desc_idxs(t->d,n,s);
   ensure(i >= 0, "invalid monomial");
@@ -850,7 +787,7 @@ FUN(cpys) (const T *t, T *r, ssz_t n, str_t s)
 void
 FUN(cpym) (const T *t, T *r, ssz_t n, const ord_t m[n])
 {
-  assert(t && r && m); DBGFUN(->); DBGTPSA(t);
+  assert(t && r && m); DBGFUN(->);
   ensure(t->d == r->d, "incompatible GTPSAs descriptors 0x%p vs 0x%p",t->d,r->d);
   idx_t i = mad_desc_idxm(t->d,n,m);
   ensure(i >= 0, "invalid monomial");
@@ -861,7 +798,7 @@ FUN(cpym) (const T *t, T *r, ssz_t n, const ord_t m[n])
 void
 FUN(cpysm) (const T *t, T *r, ssz_t n, const idx_t m[n])
 {
-  assert(t && m); DBGFUN(->); DBGTPSA(t);
+  assert(t && m); DBGFUN(->);
   ensure(t->d == r->d, "incompatible GTPSAs descriptors 0x%p vs 0x%p",t->d,r->d);
   idx_t i = mad_desc_idxsm(t->d,n,m);
   ensure(i >= 0, "invalid monomial");
@@ -872,9 +809,6 @@ FUN(cpysm) (const T *t, T *r, ssz_t n, const idx_t m[n])
 // --- without complex-by-value version ---------------------------------------o
 
 #ifdef MAD_CTPSA_IMPL
-
-void FUN(get0_r) (const T *t, NUM *r)
-{ assert(r); *r = FUN(get0)(t); }
 
 void FUN(geti_r) (const T *t, idx_t i, NUM *r)
 { assert(r); *r = FUN(geti)(t, i); }
@@ -887,9 +821,6 @@ void FUN(getm_r) (const T *t, ssz_t n, const ord_t m[n], NUM *r)
 
 void FUN(getsm_r) (const T *t, ssz_t n, const idx_t m[n], NUM *r)
 { assert(r); *r = FUN(getsm)(t, n, m); }
-
-void FUN(set0_r) (T *t, num_t a_re, num_t a_im, num_t b_re, num_t b_im)
-{ FUN(set0)(t, CPX(a), CPX(b)); }
 
 void FUN(seti_r) (T *t, idx_t i, num_t a_re, num_t a_im, num_t b_re, num_t b_im)
 { FUN(seti)(t, i, CPX(a), CPX(b)); }

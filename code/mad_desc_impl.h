@@ -53,6 +53,7 @@ struct desc_ { // warning: must be identical to LuaJIT def (see mad_gtpsa.mad)
   int   uno, nth;    // user provided no, max #threads or 1
   ssz_t nc;          // number of coefs (max length of TPSA)
 
+  int   *shared;     // counter of shared desc (all tables below except prms)
   ord_t *monos,      // 'matrix' storing the monomials (sorted by var)
         *ords,       // order of each mono of To
         *prms,       // order of parameters in each mono of To (zero = no prms)
@@ -67,9 +68,9 @@ struct desc_ { // warning: must be identical to LuaJIT def (see mad_gtpsa.mad)
        **L,          // multiplication indexes: L[oa,ob]->L_ord; L_ord[ia,ib]->ic
       ***L_idx;      // L_idx[oa,ob]->[start] [split] [end] idxs in L
 
-  size_t size;       // bytes used by desc
+  size_t size;       // bytes used by tables
 
-  // permanent temporaries per thread for internal use
+  // permanent temporaries per thread for internal use (not shared)
 #if DESC_USE_TMP
    tpsa_t ** t;      // tmp for  tpsa
   ctpsa_t **ct;      // tmp for ctpsa
@@ -83,7 +84,7 @@ struct desc_ { // warning: must be identical to LuaJIT def (see mad_gtpsa.mad)
 
 // --- TPSA sanity checks -----------------------------------------------------o
 
-#if TPSA_DEBUG > 0
+#if TPSA_DEBUG
 #  define DBGTPSA(t) ((void)(mad_tpsa_dbga && FUN(debug)(t,#t,__func__,__LINE__,0)))
 #else
 #  define DBGTPSA(t)
@@ -91,7 +92,7 @@ struct desc_ { // warning: must be identical to LuaJIT def (see mad_gtpsa.mad)
 
 // --- trace functions --------------------------------------------------------o
 
-#if TPSA_DEBUG > 0
+#if TPSA_DEBUG
 #  define DBGFUN(a) ((void)(mad_tpsa_dbgf && printf(#a " %s:%d:\n",__func__,__LINE__)))
 #else
 #  define DBGFUN(a)
@@ -117,12 +118,12 @@ hpoly_idx (idx_t ib, idx_t ia, ssz_t ia_size)
 #define REL_TMPC(t) mad_ctpsa_reltmp (t, __func__)
 #define REL_TMPR(t)  mad_tpsa_reltmp (t, __func__)
 #else
-#define GET_TMPX(t)          FUN(new)(t, t->mo)
-#define REL_TMPX(t)          FUN(del)(t)
-#define GET_TMPC(t)     mad_ctpsa_new((ctpsa_t*)t, t->mo)
-#define GET_TMPR(t)      mad_tpsa_new( (tpsa_t*)t, t->mo)
-#define REL_TMPC(t)     mad_ctpsa_del(t)
-#define REL_TMPR(t)      mad_tpsa_del(t)
+#define GET_TMPX(t)          FUN(new)(          t, mad_tpsa_same)
+#define REL_TMPX(t)          FUN(del)(          t)
+#define GET_TMPC(t)     mad_ctpsa_new((ctpsa_t*)t, mad_tpsa_same)
+#define GET_TMPR(t)      mad_tpsa_new( (tpsa_t*)t, mad_tpsa_same)
+#define REL_TMPC(t)     mad_ctpsa_del(          t)
+#define REL_TMPR(t)      mad_tpsa_del(          t)
 #endif // DESC_USE_TMP
 
 // --- end --------------------------------------------------------------------o

@@ -280,7 +280,7 @@ FUN(clear) (T *t)
 
 void
 FUN(update) (T *t)
-{
+{/*
   assert(t); DBGFUN(->);
   if (t->hi) {
     const ord_t *ords = t->d->ords;
@@ -289,7 +289,7 @@ FUN(update) (T *t)
         (j=FUN(nzero0r)(t,t->lo=ords[j],t->hi)) > 0) t->hi=ords[j];
     else t->lo=1, t->hi=0;
   }
-  DBGTPSA(t); DBGFUN(<-);
+  DBGTPSA(t); DBGFUN(<-);*/
 }
 
 void

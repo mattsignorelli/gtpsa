@@ -7,7 +7,7 @@ version = v"1.2.1"
 
 # Collection of sources required to complete build
 sources = [
-    GitSource("https://github.com/mattsignorelli/gtpsa.git", "69df90c1c4b58f3aca4511b0ba9c3ce00cf3fcec")
+    GitSource("https://github.com/mattsignorelli/gtpsa.git", "812bb5ad3afaf9c5e636d084dbb8623181650ee7")
 ]
 
 # Bash recipe for building across all platforms
@@ -22,7 +22,7 @@ make install
 
 # These are the platforms we will build for by default, unless further
 # The code does not compile on FreeBSD due to an error with __builtin_tgmath
-platforms = [supported_platforms()[2], supported_platforms()[13]] # MacOS aarch64 
+platforms = [supported_platforms()[2]] #, supported_platforms()[13]] # MacOS aarch64 
 #filter!(!Sys.isfreebsd, platforms)
 
 

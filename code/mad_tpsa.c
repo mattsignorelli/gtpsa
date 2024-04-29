@@ -46,8 +46,9 @@ static long long ratio_nn[11] = {0};
 static inline num_t
 ratio (const T *t, num_t eps_)
 {
-  if (!t->hi) return -1;
   num_t eps = eps_ ? eps_ : mad_tpsa_eps;
+
+  if (!t->hi) return fabs(t->coef[0]) >= eps;
 
   long  nz = 0;
   TPSA_SCAN(t) if (fabs(t->coef[i]) >= eps) ++nz;
@@ -69,10 +70,12 @@ check (const T *t, ord_t *o_, num_t *r_)
   if (!t->d || t->mo > t->d->mo || t->hi > t->mo ||
       (t->lo > t->hi && t->lo != 1)) goto ret;
 
+#if TPSA_STRICT
   if (t->hi) {
     if (FUN(nzero0)(t,t->lo,t->lo) < 0) {_o = t->lo; goto ret;}
     if (FUN(nzero0)(t,t->hi,t->hi) < 0) {_o = t->hi; goto ret;}
   }
+#endif
 
   if (r_) *r_ = ratio(t,0);
   return TRUE;
@@ -214,7 +217,11 @@ log_t
 FUN(isnul) (const T *t)
 {
   assert(t);
-  return !(t->hi || t->coef[0]);
+#if TPSA_STRICT
+  return  !t->hi && !t->coef[0];
+#else
+  return (!t->hi && !t->coef[0]) || FUN(nzero0)(t,t->lo,t->hi) < 0;
+#endif
 }
 
 log_t
@@ -280,7 +287,7 @@ FUN(clear) (T *t)
 
 void
 FUN(update) (T *t)
-{/*
+{
   assert(t); DBGFUN(->);
   if (t->hi) {
     const ord_t *ords = t->d->ords;
@@ -289,7 +296,7 @@ FUN(update) (T *t)
         (j=FUN(nzero0r)(t,t->lo=ords[j],t->hi)) > 0) t->hi=ords[j];
     else t->lo=1, t->hi=0;
   }
-  DBGTPSA(t); DBGFUN(<-);*/
+  DBGTPSA(t); DBGFUN(<-);
 }
 
 void
@@ -521,7 +528,7 @@ FUN(convert) (const T *t, T *r_, ssz_t n, idx_t t2r_[n], int pb)
 ord_t
 FUN(mono) (const T *t, idx_t i, ssz_t n, ord_t m_[n], ord_t *p_)
 {
-  assert(t);
+  assert(t); DBGFUN(->);
   ord_t ret = mad_desc_mono(t->d, i, n, m_, p_);
   DBGFUN(<-); return ret;
 }
@@ -529,7 +536,7 @@ FUN(mono) (const T *t, idx_t i, ssz_t n, ord_t m_[n], ord_t *p_)
 idx_t
 FUN(idxs) (const T *t, ssz_t n, str_t s)
 {
-  assert(t && s);
+  assert(t && s); DBGFUN(->);
   idx_t ret = mad_desc_idxs(t->d, n, s);
   DBGFUN(<-); return ret;
 }
@@ -537,7 +544,7 @@ FUN(idxs) (const T *t, ssz_t n, str_t s)
 idx_t
 FUN(idxm) (const T *t, ssz_t n, const ord_t m[n])
 {
-  assert(t && m);
+  assert(t && m); DBGFUN(->);
   idx_t ret = mad_desc_idxm(t->d, n, m);
   DBGFUN(<-); return ret;
 }
@@ -562,10 +569,9 @@ geti (const T *t, idx_t i)
 NUM
 FUN(geti) (const T *t, idx_t i)
 {
-  assert(t);
-  if (!i) return t->coef[0];
+  assert(t); DBGFUN(->);
+  if (!i) { DBGFUN(<-); return t->coef[0]; }
 
-  DBGFUN(->);
   ensure(0 < i && i < t->d->nc, "index %d out of bounds", i);
   NUM ret = geti(t,i);
   DBGFUN(<-); return ret;
@@ -651,10 +657,9 @@ FUN(getv) (const T *t, idx_t i, ssz_t n, NUM v[n])
 void
 FUN(seti) (T *t, idx_t i, NUM a, NUM b)
 {
-  assert(t);
-  if (!i) { t->coef[0] = a*t->coef[0]+b; return; }
+  assert(t); DBGFUN(->);
+  if (!i) { t->coef[0] = a*t->coef[0]+b; DBGFUN(<-); return; }
 
-  DBGFUN(->);
   const D *d = t->d;
   ensure(0 < i && i < d->nc, "index %d out of bounds", i);
 
@@ -754,7 +759,9 @@ FUN(setv) (T *t, idx_t i, ssz_t n, const NUM v[n])
   if (t->lo > lo) t->lo = lo;
   if (t->hi < hi) t->hi = hi;
 
+#if TPSA_STRICT
   FUN(update)(t); // v may contain zeros...
+#endif
   DBGFUN(<-); return;
 }
 

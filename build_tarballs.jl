@@ -7,7 +7,7 @@ version = v"1.2.1"
 
 # Collection of sources required to complete build
 sources = [
-    GitSource("https://github.com/mattsignorelli/gtpsa.git", "65579062075447ef8761cb7c10f5a7feafd7a7a7")
+    GitSource("https://github.com/mattsignorelli/gtpsa.git", "a216fff8f698ea00aa7930c44da4ce4632571453")
 ]
 
 # Bash recipe for building across all platforms
@@ -39,3 +39,4 @@ dependencies = [
 
 # Build the tarballs, and possibly a `build.jl` as well.
 build_tarballs(ARGS, name, version, sources, script, platforms, products, dependencies; julia_compat="1.6", preferred_gcc_version = v"11.1.0")
+

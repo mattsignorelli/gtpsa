@@ -20,14 +20,10 @@
 #include <string.h>
 #include <complex.h>
 
-#include "mad_cst.h"
 #include "mad_log.h"
 #include "mad_num.h"
-#ifdef    MAD_CTPSA_IMPL
-#include "mad_ctpsa_impl.h"
-#else
 #include "mad_tpsa_impl.h"
-#endif
+#include "mad_ctpsa_impl.h"
 
 // --- local ------------------------------------------------------------------o
 
@@ -43,13 +39,13 @@ fun_taylor (const T *a, T *c, ord_t n, const NUM ord_coef[n+1])
 
   T *acp = GET_TMPX(c);
   FUN(copy)(a,acp);               // copy of a
-  FUN(set0)(acp,0,0);             // (a-a_0)
+  FUN(seti)(acp,0,0,0);           // (a-a_0)
   FUN(setval)(c,ord_coef[n]);     // f(a_n)
 
   // Honer's method (slower by 50% - 100% because mul is always full order)
   while (n-- > 0) {
     FUN(mul)(acp,c,c);            //                    f^(n)(a_n)*(a-a_0)
-    FUN(set0)(c,1,ord_coef[n]);   // f^(n-1)(a_{n-1}) + f^(n)(a_n)*(a-a_0)
+    FUN(seti)(c,0,1,ord_coef[n]); // f^(n-1)(a_{n-1}) + f^(n)(a_n)*(a-a_0)
   }
   REL_TMPX(acp);
 }
@@ -67,12 +63,12 @@ fun_taylor (const T *a, T *c, ord_t n, const NUM ord_coef[n+1])
 
   // n=1
   FUN(scl)(a, ord_coef[1], c);
-  FUN(set0)(c, 0, ord_coef[0]);    // f(a) + f'(a)(a-a0)
+  FUN(seti)(c, 0, 0, ord_coef[0]); // f(a) + f'(a)(a-a0)
 
   // n=2
   if (n >= 2) {
     T *pow = GET_TMPX(c);
-    FUN(set0)(acp,0,0);            //  a-a0
+    FUN(seti)(acp,0,0,0);          //  a-a0
     FUN(mul)(acp,acp,pow);         // (a-a0)^2
     FUN(acc)(pow,ord_coef[2],c);   // f(a0) + f'(a0)(a-a0) + f"(a0)(a-a0)^2
 
@@ -106,13 +102,13 @@ sincos_taylor (const T *a, T *s, T *c,
   T *acp = GET_TMPX(c); FUN(copy)(a,acp);
 
   // n=1
-  FUN(scl)(acp, sin_coef[1], s); FUN(set0)(s, 0, sin_coef[0]);
-  FUN(scl)(acp, cos_coef[1], c); FUN(set0)(c, 0, cos_coef[0]);
+  FUN(scl)(acp, sin_coef[1], s); FUN(seti)(s, 0, 0, sin_coef[0]);
+  FUN(scl)(acp, cos_coef[1], c); FUN(seti)(c, 0, 0, cos_coef[0]);
 
   // n=2
   if (n >= 2) {
     T *pow = GET_TMPX(c);
-    FUN(set0)(acp,0,0);
+    FUN(seti)(acp,0,0,0);
     FUN(mul)(acp,acp,pow);
     if (n_s >= 2) FUN(acc)(pow,sin_coef[2],s);
     if (n_c >= 2) FUN(acc)(pow,cos_coef[2],c);
@@ -141,22 +137,22 @@ sincos_taylor (const T *a, T *s, T *c,
 void
 FUN(taylor) (const T *a, ssz_t n, const NUM coef[n], T *c)
 {
-  assert(a && c && coef); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatibles GTPSA (descriptors differ)");
+  assert(a && c && coef); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   ensure(n > 0, "invalid number of coefficients (>0 expected)");
 
-  ord_t to = MIN(n-1,c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,coef[0]); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = MIN(n-1, c->mo);
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,coef[0]); DBGFUN(<-); return; }
 
   fun_taylor(a,c,to,coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(inv) (const T *a, NUM v, T *c) // c = v/a    // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatibles GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0];
   ensure(a0 != 0, "invalid domain inv("FMT")", VAL(a0));
 #ifdef MAD_CTPSA_IMPL
@@ -165,8 +161,8 @@ FUN(inv) (const T *a, NUM v, T *c) // c = v/a    // checked for real and complex
   NUM f0 = 1/a0;
 #endif
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,v*f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,v*f0); DBGFUN(<-); return; }
 
   NUM ord_coef[to+1];
   ord_coef[0] = f0;
@@ -175,14 +171,14 @@ FUN(inv) (const T *a, NUM v, T *c) // c = v/a    // checked for real and complex
 
   fun_taylor(a,c,to,ord_coef);
   if (v != 1) FUN(scl)(c,v,c);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(invsqrt) (const T *a, NUM v, T *c) // v/sqrt(a),checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0];
   ensure(SELECT(a0 > 0, a0 != 0), "invalid domain invsqrt("FMT")", VAL(a0));
 #ifdef MAD_CTPSA_IMPL
@@ -193,8 +189,8 @@ FUN(invsqrt) (const T *a, NUM v, T *c) // v/sqrt(a),checked for real and complex
   NUM  f0 = 1/sqrt(a0);
 #endif
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,v*f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,v*f0); DBGFUN(<-); return; }
 
   NUM ord_coef[to+1];
   ord_coef[0] = f0;
@@ -203,20 +199,20 @@ FUN(invsqrt) (const T *a, NUM v, T *c) // v/sqrt(a),checked for real and complex
 
   fun_taylor(a,c,to,ord_coef);
   if (v != 1) FUN(scl)(c,v,c);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(sqrt) (const T *a, T *c)                     // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0];
   ensure(SELECT(a0 > 0, a0 != 0), "invalid domain sqrt("FMT")", VAL(a0));
   NUM f0 = sqrt(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
 #ifdef MAD_CTPSA_IMPL
   NUM _a0 = mad_cpx_inv(a0);
@@ -230,18 +226,18 @@ FUN(sqrt) (const T *a, T *c)                     // checked for real and complex
     ord_coef[o] = -ord_coef[o-1] * _a0 / (2.0*o) * (2.0*o-3);
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(exp) (const T *a, T *c)                      // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0], f0 = exp(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   NUM ord_coef[to+1];
   ord_coef[0] = f0;
@@ -249,20 +245,20 @@ FUN(exp) (const T *a, T *c)                      // checked for real and complex
     ord_coef[o] = ord_coef[o-1] / o;
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(log) (const T *a, T *c)                      // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0];
   ensure(SELECT(a0 > 0, a0 != 0), "invalid domain log("FMT")", VAL(a0));
   NUM f0 = log(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   NUM ord_coef[to+1], _a0 = 1/a0;
   ord_coef[0] = f0;
@@ -271,54 +267,51 @@ FUN(log) (const T *a, T *c)                      // checked for real and complex
     ord_coef[o] = -ord_coef[o-1] * _a0 / o * (o-1);
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(pow) (const T *a, const T *b, T *c)          // checked for real and complex
 {
-  assert(a && b && c); DBGFUN(->); DBGTPSA(a); DBGTPSA(b);
+  assert(a && b && c); DBGFUN(->);
   T *t = GET_TMPX(c);
   FUN(log)(a,t);
   FUN(mul)(b,t,c);
   FUN(exp)(c,c);
-  REL_TMPX(t);
-  DBGTPSA(c); DBGFUN(<-);
+  REL_TMPX(t); DBGFUN(<-);
 }
 
 void
 FUN(pown) (const T *a, NUM v, T *c)              // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
+  assert(a && c); DBGFUN(->);
   T *t = GET_TMPX(c);
   FUN(log)(a,t);
   FUN(scl)(t,v,c);
   FUN(exp)(c,c);
-  REL_TMPX(t);
-  DBGTPSA(c); DBGFUN(<-);
+  REL_TMPX(t); DBGFUN(<-);
 }
 
 void
 FUN(sincos) (const T *a, T *s, T *c)             // checked for real and complex
 {
-  assert(a && s && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == s->d && a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && s && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,s,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0], sa = sin(a0), ca = cos(a0);
 
   if (a->hi == 0) {
     FUN(setval)(s, sa);
     FUN(setval)(c, ca);
-    DBGTPSA(c); DBGTPSA(s); DBGFUN(<-); return;
+    DBGFUN(<-); return;
   }
 
-  ord_t sto = MIN(s->mo,s->d->to),
-        cto = MIN(c->mo,c->d->to);
+  ord_t sto = s->mo, cto = c->mo;
   if (!sto || !cto) {
     if (!sto) FUN(setval)(s, sa);
     else      FUN(sin)(a,s);
     if (!cto) FUN(setval)(c, ca);
     else      FUN(cos)(a,c);
-    DBGTPSA(c); DBGTPSA(s); DBGFUN(<-); return;
+    DBGFUN(<-); return;
   }
 
   // ord 0, 1
@@ -333,18 +326,18 @@ FUN(sincos) (const T *a, T *s, T *c)             // checked for real and complex
     cos_coef[o] = -cos_coef[o-2] / (o*(o-1));
 
   sincos_taylor(a,s,c, sto,sin_coef, cto,cos_coef);
-  DBGTPSA(c); DBGTPSA(s); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(sin) (const T *a, T *c)                      // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0], f0 = sin(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   NUM ord_coef[to+1];
   ord_coef[0] = f0;
@@ -353,18 +346,18 @@ FUN(sin) (const T *a, T *c)                      // checked for real and complex
     ord_coef[o] = -ord_coef[o-2] / (o*(o-1));
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(cos) (const T *a, T *c)                      // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0], f0 = cos(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   NUM ord_coef[to+1];
   ord_coef[0] = f0;
@@ -373,26 +366,26 @@ FUN(cos) (const T *a, T *c)                      // checked for real and complex
     ord_coef[o] = -ord_coef[o-2] / (o*(o-1));
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(tan) (const T *a, T *c)                      // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0];
   ensure(cos(a0) != 0, "invalid domain tan("FMT")", VAL(a0));
   NUM f0 = tan(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   if (to > MANUAL_EXPANSION_ORD) {
     T *t = GET_TMPX(c);
     FUN(sincos)(a,t,c);
     FUN(div)(t,c,c);
-    REL_TMPX(t); DBGTPSA(c); DBGFUN(<-); return;
+    REL_TMPX(t); DBGFUN(<-); return;
   }
 
   NUM ord_coef[to+1], f2 = f0*f0;
@@ -408,25 +401,25 @@ FUN(tan) (const T *a, T *c)                      // checked for real and complex
   }
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(cot) (const T *a, T *c)                      // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0];
   ensure(sin(a0) != 0, "invalid domain cot("FMT")", VAL(a0));
   NUM f0 = tan(M_PI_2 - a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   T *t = GET_TMPX(c);
   FUN(sincos)(a,t,c);
   FUN(div)(c,t,c);
-  REL_TMPX(t); DBGTPSA(c); DBGFUN(<-); return;
+  REL_TMPX(t); DBGFUN(<-); return;
 
 #if 0
   // Inaccurate expansion for small a0, need some work...
@@ -443,34 +436,32 @@ FUN(cot) (const T *a, T *c)                      // checked for real and complex
   }
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c);
 #endif
 }
 
 void
 FUN(sinc) (const T *a, T *c)
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
 
   NUM a0 = a->coef[0];
-  ord_t to = MIN(c->mo,c->d->to);
+  ord_t to = c->mo;
 
-  if (!to || !a->hi) {
+  if (!to || FUN(isval)(a)) {
 #ifdef MAD_CTPSA_IMPL
     NUM f0 = mad_cpx_sinc(a0);
 #else
     NUM f0 = mad_num_sinc (a0);
 #endif
-    FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return;
+    FUN(setval)(c,f0); DBGFUN(<-); return;
   }
 
   if (fabs(a0) > 1e-12) { // sin(x)/x
     T *t = GET_TMPX(c);
     FUN(sin)(a,t);
     FUN(div)(t,a,c);
-    REL_TMPX(t);
-    DBGTPSA(c); DBGFUN(<-); return;
+    REL_TMPX(t); DBGFUN(<-); return;
   }
 // prefer explicit above? not better in term of stability...
 //    NUM sa = sin(a0), ca = cos(a0), _a0 = 1/a0, f1;
@@ -492,30 +483,29 @@ FUN(sinc) (const T *a, T *c)
     ord_coef[o] = -ord_coef[o-2] / (o * (o+1));
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(sincosh) (const T *a, T *sh, T *ch)          // checked for real and complex
 {
-  assert(a && sh && ch); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == sh->d && a->d == ch->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && sh && ch); DBGFUN(->);
+  ensure(IS_COMPAT(a,sh,ch), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0], sa = sinh(a0), ca = cosh(a0);
 
   if (a->hi == 0) {
     FUN(setval)(sh, sa);
     FUN(setval)(ch, ca);
-    DBGTPSA(ch); DBGTPSA(sh); DBGFUN(<-); return;
+    DBGFUN(<-); return;
   }
 
-  ord_t sto = MIN(sh->mo,sh->d->to),
-        cto = MIN(ch->mo,ch->d->to);
+  ord_t sto = sh->mo, cto = ch->mo;
   if (!sto || !cto) {
     if (!sto) FUN(setval)(sh, sa);
     else      FUN(sinh)(a,sh);
     if (!cto) FUN(setval)(ch, ca);
     else      FUN(cosh)(a,ch);
-    DBGTPSA(ch); DBGTPSA(sh); DBGFUN(<-); return;
+    DBGFUN(<-); return;
   }
 
   // ord 0, 1
@@ -530,18 +520,18 @@ FUN(sincosh) (const T *a, T *sh, T *ch)          // checked for real and complex
     cos_coef[o] = cos_coef[o-2] / (o*(o-1));
 
   sincos_taylor(a,sh,ch, sto,sin_coef, cto,cos_coef);
-  DBGTPSA(ch); DBGTPSA(sh); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(sinh) (const T *a, T *c)                     // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0], f0 = sinh(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   NUM ord_coef[to+1];
   ord_coef[0] = f0;
@@ -550,18 +540,18 @@ FUN(sinh) (const T *a, T *c)                     // checked for real and complex
     ord_coef[o] = ord_coef[o-2] / (o*(o-1));
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(cosh) (const T *a, T *c)                     // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0], f0 = cosh(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   NUM ord_coef[to+1];
   ord_coef[0] = f0;
@@ -570,24 +560,24 @@ FUN(cosh) (const T *a, T *c)                     // checked for real and complex
     ord_coef[o] = ord_coef[o-2] / (o*(o-1));
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(tanh) (const T *a, T *c)                     // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0], f0 = tanh(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   if (to > MANUAL_EXPANSION_ORD) {
     T *t = GET_TMPX(c);
     FUN(sincosh)(a,t,c);
     FUN(div)(t,c,c);
-    REL_TMPX(t); DBGTPSA(c); DBGFUN(<-); return;
+    REL_TMPX(t); DBGFUN(<-); return;
   }
 
   NUM ord_coef[to+1], f2 = f0*f0;
@@ -603,14 +593,14 @@ FUN(tanh) (const T *a, T *c)                     // checked for real and complex
   }
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(coth) (const T *a, T *c)                     // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0], f0 = tanh(a0);
   ensure(f0 != 0, "invalid domain coth("FMT")", VAL(a0));
 #ifdef MAD_CTPSA_IMPL
@@ -619,14 +609,14 @@ FUN(coth) (const T *a, T *c)                     // checked for real and complex
   f0 = 1/f0;
 #endif
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   if (to > MANUAL_EXPANSION_ORD) {
     T *t = GET_TMPX(c);
     FUN(sincosh)(a,t,c);
     FUN(div)(c,t,c);
-    REL_TMPX(t); DBGTPSA(c); DBGFUN(<-); return;
+    REL_TMPX(t); DBGFUN(<-); return;
   }
 
   NUM ord_coef[to+1], f2 = f0*f0;
@@ -642,33 +632,32 @@ FUN(coth) (const T *a, T *c)                     // checked for real and complex
   }
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(sinhc) (const T *a, T *c)
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
 
   NUM a0 = a->coef[0];
-  ord_t to = MIN(c->mo,c->d->to);
+  ord_t to = c->mo;
 
-  if (!to || !a->hi) {
+  if (!to || FUN(isval)(a)) {
 #ifdef MAD_CTPSA_IMPL
     NUM f0 = mad_cpx_sinhc(a0);
 #else
     NUM f0 = mad_num_sinhc (a0);
 #endif
-    FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return;
+    FUN(setval)(c,f0); DBGFUN(<-); return;
   }
 
   if (fabs(a0) > 1e-12) { // sinh(x)/x
     T *t = GET_TMPX(c);
     FUN(sinh)(a,t);
     FUN(div)(t,a,c);
-    REL_TMPX(t);
-    DBGTPSA(c); DBGFUN(<-); return;
+    REL_TMPX(t); DBGFUN(<-); return;
   }
 
   // sinhc(x) at x=0
@@ -679,20 +668,20 @@ FUN(sinhc) (const T *a, T *c)
     ord_coef[o] = ord_coef[o-2] / (o * (o+1));
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(asin) (const T *a, T *c)                     // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0];
   ensure(SELECT(fabs(a0) < 1, 1), "invalid domain asin("FMT")", VAL(a0));
   NUM f0 = asin(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   if (to > MANUAL_EXPANSION_ORD) { // use simpler and faster approach?
     // asin(x) = -i*ln(i*x + sqrt(1-x^2))
@@ -707,7 +696,7 @@ FUN(asin) (const T *a, T *c)                     // checked for real and complex
     mad_ctpsa_real(t, c);
     REL_TMPC(t);
 #endif
-    DBGTPSA(c); DBGFUN(<-); return;
+    DBGFUN(<-); return;
   }
 
   NUM ord_coef[to+1], a2 = a0*a0, f1 = 1/sqrt(1-a2), f2 = f1*f1, f4 = f2*f2;
@@ -723,20 +712,20 @@ FUN(asin) (const T *a, T *c)                     // checked for real and complex
   }
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(acos) (const T *a, T *c)                     // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0];
   ensure(SELECT(fabs(a0) < 1, 1), "invalid domain acos("FMT")", VAL(a0));
   NUM f0 = acos(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   if (to > MANUAL_EXPANSION_ORD) {  // use simpler and faster approach?
     // acos(x) = -i*ln(x+i*sqrt(1-x^2)) = -asin(x)+pi/2
@@ -751,7 +740,7 @@ FUN(acos) (const T *a, T *c)                     // checked for real and complex
     mad_ctpsa_real(t, c);
     REL_TMPC(t);
 #endif
-    DBGTPSA(c); DBGFUN(<-); return;
+    DBGFUN(<-); return;
   }
 
   NUM ord_coef[to+1], a2 = a0*a0, f1 = -1/sqrt(1-a2), f2 = f1*f1, f4 = f2*f2;
@@ -767,18 +756,18 @@ FUN(acos) (const T *a, T *c)                     // checked for real and complex
   }
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(atan) (const T *a, T *c)                     // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0], f0 = atan(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   if (to > MANUAL_EXPANSION_ORD) { // use simpler and faster approach?
     // atan(x) = i/2 ln((i+x) / (i-x))
@@ -786,19 +775,19 @@ FUN(atan) (const T *a, T *c)                     // checked for real and complex
     ctpsa_t *tn = GET_TMPX(c), *td = GET_TMPX(c);
     mad_ctpsa_copy(a, tn);
     mad_ctpsa_axpb(-1, tn, I, td);
-    mad_ctpsa_set0(tn, 1, I);
+    mad_ctpsa_seti(tn, 0, 1, I);
     mad_ctpsa_logxdy(tn, td, c);
     mad_ctpsa_scl(c, I/2, c);
 #else
     ctpsa_t *tn = GET_TMPC(c), *td = GET_TMPC(c);
     mad_ctpsa_cplx(a, NULL, tn);
     mad_ctpsa_axpb(-1, tn, I, td);
-    mad_ctpsa_set0(tn, 1, I);
+    mad_ctpsa_seti(tn, 0, 1, I);
     mad_ctpsa_logxdy(tn, td, tn);
     mad_ctpsa_scl(tn, I/2, tn);
     mad_ctpsa_real(tn, c);
 #endif
-    REL_TMPC(td), REL_TMPC(tn); DBGTPSA(c); DBGFUN(<-); return;
+    REL_TMPC(td), REL_TMPC(tn); DBGFUN(<-); return;
   }
 
   NUM ord_coef[to+1], a2 = a0*a0, f1 = 1/(1+a2), f2 = f1*f1, f4 = f2*f2;
@@ -814,14 +803,14 @@ FUN(atan) (const T *a, T *c)                     // checked for real and complex
   }
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(acot) (const T *a, T *c)                     // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0];
   ensure(a0 != 0, "invalid domain acot("FMT")", VAL(a0));
 #ifdef MAD_CTPSA_IMPL
@@ -830,8 +819,8 @@ FUN(acot) (const T *a, T *c)                     // checked for real and complex
   NUM f0 = atan(1/a0);
 #endif
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   if (to > MANUAL_EXPANSION_ORD) { // use simpler and faster approach?
     // acot(x) = i/2 ln((x-i) / (x+i))
@@ -839,21 +828,21 @@ FUN(acot) (const T *a, T *c)                     // checked for real and complex
     ctpsa_t *tn = GET_TMPX(c), *td = GET_TMPX(c);
     mad_ctpsa_copy( a, tn);
     mad_ctpsa_copy(tn, td);
-    mad_ctpsa_set0(tn, 1, -I);
-    mad_ctpsa_set0(td, 1,  I);
+    mad_ctpsa_seti(tn, 0, 1, -I);
+    mad_ctpsa_seti(td, 0, 1,  I);
     mad_ctpsa_logxdy(tn, td, c);
     mad_ctpsa_scl(c, I/2, c);
 #else
     ctpsa_t *tn = GET_TMPC(c), *td = GET_TMPC(c);
     mad_ctpsa_cplx(a, NULL, tn);
     mad_ctpsa_copy(tn, td);
-    mad_ctpsa_set0(tn, 1, -I);
-    mad_ctpsa_set0(td, 1,  I);
+    mad_ctpsa_seti(tn, 0, 1, -I);
+    mad_ctpsa_seti(td, 0, 1,  I);
     mad_ctpsa_logxdy(tn, td, tn);
     mad_ctpsa_scl(tn, I/2, tn);
     mad_ctpsa_real(tn, c);
 #endif
-    REL_TMPC(td), REL_TMPC(tn); DBGTPSA(c); DBGFUN(<-); return;
+    REL_TMPC(td), REL_TMPC(tn); DBGFUN(<-); return;
   }
 
   NUM ord_coef[to+1], a2 = a0*a0, f1 = -1/(1+a2), f2 = f1*f1, f4 = f2*f2;
@@ -869,32 +858,32 @@ FUN(acot) (const T *a, T *c)                     // checked for real and complex
   }
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(asinc) (const T *a, T *c)
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
 
   NUM a0 = a->coef[0];
-  ord_t to = MIN(c->mo,c->d->to);
+  ord_t to = c->mo;
 
-  if (!to || !a->hi) {
+  if (!to || FUN(isval)(a)) {
 #ifdef MAD_CTPSA_IMPL
     NUM f0 = mad_cpx_asinc(a0);
 #else
-    NUM f0 = mad_num_asinc (a0);
+    NUM f0 = mad_num_asinc(a0);
 #endif
-    FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return;
+    FUN(setval)(c,f0); DBGFUN(<-); return;
   }
 
   if (fabs(a0) > 1e-12) { // asin(x)/x
     T *t = GET_TMPX(c);
     FUN(asin)(a,t);
     FUN(div)(t,a,c);
-    REL_TMPX(t); DBGTPSA(c); DBGFUN(<-); return;
+    REL_TMPX(t); DBGFUN(<-); return;
   }
 
   // asinc(x) at x=0
@@ -905,23 +894,23 @@ FUN(asinc) (const T *a, T *c)
     ord_coef[o] = (ord_coef[o-2] * SQR(o-1)) / (o * (o+1));
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(asinh) (const T *a, T *c)                    // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0], f0 = asinh(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   if (to > MANUAL_EXPANSION_ORD) { // use simpler and faster approach?
     // asinh(x) = log(x + sqrt(x^2+1))
     FUN(logaxpsqrtbpcx2)(a, 1, 1, 1, c);
-    DBGTPSA(c); DBGFUN(<-); return;
+    DBGFUN(<-); return;
   }
 
   NUM ord_coef[to+1], a2 = a0*a0, f1 = 1/sqrt(a2+1), f2 = f1*f1, f4 = f2*f2;
@@ -937,25 +926,25 @@ FUN(asinh) (const T *a, T *c)                    // checked for real and complex
   }
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(acosh) (const T *a, T *c)                    // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0];
   ensure(SELECT(a0 > 1, 1), "invalid domain acosh("FMT")", VAL(a0));
   NUM f0 = acosh(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   if (to > MANUAL_EXPANSION_ORD) { // use simpler and faster approach?
     // acosh(x) = ln(x + sqrt(x^2-1))
     FUN(logaxpsqrtbpcx2)(a, 1, -1, 1, c);
-    DBGTPSA(c); DBGFUN(<-); return;
+    DBGFUN(<-); return;
   }
 
   NUM ord_coef[to+1], a2 = a0*a0, f1 = 1/sqrt(a2-1), f2 = f1*f1, f4 = f2*f2;
@@ -971,30 +960,30 @@ FUN(acosh) (const T *a, T *c)                    // checked for real and complex
   }
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(atanh) (const T *a, T *c)                    // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0];
   ensure(fabs(a0) SELECT(< 1, != 1), "invalid domain atanh("FMT")", VAL(a0));
   NUM f0 = atanh(a0);
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   if (to > MANUAL_EXPANSION_ORD) { // use simpler and faster approach?
     // atanh(x) = 1/2 ln((1+x) / (1-x))
     T *tn = GET_TMPX(c), *td = GET_TMPX(c);
     FUN(copy)(a, tn);
-    FUN(set0)(tn, 1, 1);
+    FUN(seti)(tn, 0, 1, 1);
     FUN(axpb)(-1, a, 1, td);
     FUN(logxdy)(tn, td, c);
     FUN(scl)(c, 0.5, c);
-    REL_TMPX(td), REL_TMPX(tn); DBGTPSA(c); DBGFUN(<-); return;
+    REL_TMPX(td), REL_TMPX(tn); DBGFUN(<-); return;
   }
 
   NUM ord_coef[to+1], a2 = a0*a0, f1 = 1/(1-a2), f2 = f1*f1, f4 = f2*f2;
@@ -1010,14 +999,14 @@ FUN(atanh) (const T *a, T *c)                    // checked for real and complex
   }
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(acoth) (const T *a, T *c)                    // checked for real and complex
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
   NUM a0 = a->coef[0];
   ensure(fabs(a0) SELECT(> 1, != 1 && a0 != 0), "invalid domain acoth("FMT")", VAL(a0));
 #ifdef MAD_CTPSA_IMPL
@@ -1026,19 +1015,19 @@ FUN(acoth) (const T *a, T *c)                    // checked for real and complex
   NUM f0 = atanh(1/a0);
 #endif
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   if (to > MANUAL_EXPANSION_ORD) { // use simpler and faster approach?
     // acoth(x) = 1/2 ln((x+1) / (x-1))
     T *tn = GET_TMPX(c), *td = GET_TMPX(c);
     FUN(copy)(a, tn);
-    FUN(set0)(tn, 1, 1);
+    FUN(seti)(tn, 0, 1, 1);
     FUN(copy)(a, td);
-    FUN(set0)(td, 1, -1);
+    FUN(seti)(td, 0, 1, -1);
     FUN(logxdy)(tn, td, c);
     FUN(scl)(c, 0.5, c);
-    REL_TMPX(td), REL_TMPX(tn); DBGTPSA(c); DBGFUN(<-); return;
+    REL_TMPX(td), REL_TMPX(tn); DBGFUN(<-); return;
   }
 
   NUM ord_coef[to+1], a2 = a0*a0, f1 = 1/(1-a2), f2 = f1*f1, f4 = f2*f2;
@@ -1054,32 +1043,32 @@ FUN(acoth) (const T *a, T *c)                    // checked for real and complex
   }
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(asinhc) (const T *a, T *c)
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
 
   NUM a0 = a->coef[0];
-  ord_t to = MIN(c->mo,c->d->to);
+  ord_t to = c->mo;
 
-  if (!to || !a->hi) {
+  if (!to || FUN(isval)(a)) {
 #ifdef MAD_CTPSA_IMPL
     NUM f0 = mad_cpx_asinhc(a0);
 #else
     NUM f0 = mad_num_asinhc (a0);
 #endif
-    FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return;
+    FUN(setval)(c,f0); DBGFUN(<-); return;
   }
 
   if (fabs(a0) > 1e-12) { // asinh(x)/x
     T *t = GET_TMPX(c);
     FUN(asinh)(a,t);
     FUN(div)(t,a,c);
-    REL_TMPX(t); DBGTPSA(c); DBGFUN(<-); return;
+    REL_TMPX(t); DBGFUN(<-); return;
   }
 
   // asinhc(x) at x=0
@@ -1090,14 +1079,14 @@ FUN(asinhc) (const T *a, T *c)
     ord_coef[o] = -(ord_coef[o-2] * SQR(o-1)) / (o * (o+1));
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(erf) (const T *a, T *c)
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
-  ensure(a->d == c->d, "incompatible GTPSA (descriptors differ)");
+  assert(a && c); DBGFUN(->);
+  ensure(IS_COMPAT(a,c), "incompatibles GTPSA (descriptors differ)");
 
   // erf(z) = 2/sqrt(pi) \int_0^z exp(-t^2) dt
   NUM a0 = a->coef[0];
@@ -1107,8 +1096,8 @@ FUN(erf) (const T *a, T *c)
   NUM f0 = mad_num_erf (a0);
 #endif
 
-  ord_t to = MIN(c->mo,c->d->to);
-  if (!to || !a->hi) { FUN(setval)(c,f0); DBGTPSA(c); DBGFUN(<-); return; }
+  ord_t to = c->mo;
+  if (!to || FUN(isval)(a)) { FUN(setval)(c,f0); DBGFUN(<-); return; }
 
   NUM ord_coef[to+1], a2 = a0*a0, f1 = M_2_SQRTPI*exp(-a2);
   ord_coef[0] = f0;
@@ -1117,16 +1106,16 @@ FUN(erf) (const T *a, T *c)
     ord_coef[o] = -2*((o-2)*ord_coef[o-2]/(o-1) + ord_coef[o-1]*a0) / o;
 
   fun_taylor(a,c,to,ord_coef);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 void
 FUN(erfc) (const T *a, T *c)
 {
-  assert(a && c); DBGFUN(->); DBGTPSA(a);
+  assert(a && c); DBGFUN(->);
   FUN(erf)(a,c);
   FUN(axpb)(-1,c,1,c);
-  DBGTPSA(c); DBGFUN(<-);
+  DBGFUN(<-);
 }
 
 // --- without complex-by-value version ---------------------------------------o

@@ -40,11 +40,6 @@
 
 typedef struct ctpsa_ ctpsa_t;
 
-// --- globals ---------------------------------------------------------------o
-
-extern const ord_t mad_tpsa_dflt;
-extern const ord_t mad_tpsa_same;
-
 // --- interface -------------------------------------------------------------o
 
 // ctors, dtor
@@ -56,11 +51,14 @@ void     mad_ctpsa_del     (const ctpsa_t *t);
 const
 desc_t*  mad_ctpsa_desc    (const ctpsa_t *t);
 ssz_t    mad_ctpsa_len     (const ctpsa_t *t);
+ord_t    mad_ctpsa_mo      (      ctpsa_t *t, ord_t   mo_ ); // set mo if mo <= ao
 int32_t  mad_ctpsa_uid     (      ctpsa_t *t, int32_t uid_); // set uid if != 0
 str_t    mad_ctpsa_nam     (      ctpsa_t *t, str_t   nam_); // set nam if != null
 ord_t    mad_ctpsa_ord     (const ctpsa_t *t, log_t   hi_ ); // mo or hi
 log_t    mad_ctpsa_isnul   (const ctpsa_t *t);
+log_t    mad_ctpsa_isval   (const ctpsa_t *t);
 log_t    mad_ctpsa_isvalid (const ctpsa_t *t);
+num_t    mad_ctpsa_density (const ctpsa_t *t, num_t eps); // ratio nz/nc in [lo,hi]
 
 // initialization / manipulation
 void     mad_ctpsa_copy    (const ctpsa_t *t, ctpsa_t *r);
@@ -73,7 +71,7 @@ void     mad_ctpsa_clrord  (      ctpsa_t *t, ord_t ord);
 void     mad_ctpsa_setvar  (      ctpsa_t *t, cpx_t v, idx_t iv, cpx_t scl_);
 void     mad_ctpsa_setprm  (      ctpsa_t *t, cpx_t v, idx_t ip);
 void     mad_ctpsa_setval  (      ctpsa_t *t, cpx_t v);
-log_t    mad_ctpsa_update  (      ctpsa_t *t, num_t eps_);
+void     mad_ctpsa_update  (      ctpsa_t *t);
 void     mad_ctpsa_clear   (      ctpsa_t *t);
 
 // initialization without complex-by-value
@@ -87,7 +85,6 @@ void     mad_ctpsa_real    (const ctpsa_t *t,  tpsa_t *r);
 void     mad_ctpsa_imag    (const ctpsa_t *t,  tpsa_t *r);
 void     mad_ctpsa_cabs    (const ctpsa_t *t,  tpsa_t *r);
 void     mad_ctpsa_carg    (const ctpsa_t *t,  tpsa_t *r);
-void     mad_ctpsa_unit    (const ctpsa_t *t, ctpsa_t *r);
 void     mad_ctpsa_rect    (const ctpsa_t *t, ctpsa_t *r);
 void     mad_ctpsa_polar   (const ctpsa_t *t, ctpsa_t *r);
 
@@ -99,37 +96,32 @@ idx_t    mad_ctpsa_idxsm   (const ctpsa_t *t,          ssz_t n, const idx_t m []
 idx_t    mad_ctpsa_cycle   (const ctpsa_t *t, idx_t i, ssz_t n,       ord_t m_[], cpx_t *v_);
 
 // accessors
-cpx_t    mad_ctpsa_get0    (const ctpsa_t *t);
 cpx_t    mad_ctpsa_geti    (const ctpsa_t *t, idx_t i);
 cpx_t    mad_ctpsa_gets    (const ctpsa_t *t, ssz_t n,       str_t s  ); // string w orders in '0'-'9'
 cpx_t    mad_ctpsa_getm    (const ctpsa_t *t, ssz_t n, const ord_t m[]);
 cpx_t    mad_ctpsa_getsm   (const ctpsa_t *t, ssz_t n, const idx_t m[]); // sparse mono [(i,o)]
-void     mad_ctpsa_set0    (      ctpsa_t *t, /* i = 0 */               cpx_t a, cpx_t b); // a*x[0]+b
 void     mad_ctpsa_seti    (      ctpsa_t *t, idx_t i,                  cpx_t a, cpx_t b); // a*x[i]+b
 void     mad_ctpsa_sets    (      ctpsa_t *t, ssz_t n,       str_t s  , cpx_t a, cpx_t b); // a*x[m]+b
 void     mad_ctpsa_setm    (      ctpsa_t *t, ssz_t n, const ord_t m[], cpx_t a, cpx_t b); // a*x[m]+b
 void     mad_ctpsa_setsm   (      ctpsa_t *t, ssz_t n, const idx_t m[], cpx_t a, cpx_t b); // a*x[m]+b
-void     mad_ctpsa_cpy0    (const ctpsa_t *t, ctpsa_t *r);
 void     mad_ctpsa_cpyi    (const ctpsa_t *t, ctpsa_t *r,          idx_t i);
 void     mad_ctpsa_cpys    (const ctpsa_t *t, ctpsa_t *r, ssz_t n, str_t s); // string mono "[0-9]*"
 void     mad_ctpsa_cpym    (const ctpsa_t *t, ctpsa_t *r, ssz_t n, const ord_t m[]);
 void     mad_ctpsa_cpysm   (const ctpsa_t *t, ctpsa_t *r, ssz_t n, const idx_t m[]); // sparse mono [(i,o)]
 
 // accessors without complex-by-value
-void     mad_ctpsa_get0_r  (const ctpsa_t *t, cpx_t *r);
 void     mad_ctpsa_geti_r  (const ctpsa_t *t, idx_t i, cpx_t *r);
 void     mad_ctpsa_gets_r  (const ctpsa_t *t, ssz_t n,       str_t s  , cpx_t *r);
 void     mad_ctpsa_getm_r  (const ctpsa_t *t, ssz_t n, const ord_t m[], cpx_t *r);
 void     mad_ctpsa_getsm_r (const ctpsa_t *t, ssz_t n, const idx_t m[], cpx_t *r);
-void     mad_ctpsa_set0_r  (      ctpsa_t *t, /* i = 0 */               num_t a_re, num_t a_im, num_t b_re, num_t b_im);
 void     mad_ctpsa_seti_r  (      ctpsa_t *t, idx_t i,                  num_t a_re, num_t a_im, num_t b_re, num_t b_im);
 void     mad_ctpsa_sets_r  (      ctpsa_t *t, ssz_t n,       str_t s  , num_t a_re, num_t a_im, num_t b_re, num_t b_im);
 void     mad_ctpsa_setm_r  (      ctpsa_t *t, ssz_t n, const ord_t m[], num_t a_re, num_t a_im, num_t b_re, num_t b_im);
 void     mad_ctpsa_setsm_r (      ctpsa_t *t, ssz_t n, const idx_t m[], num_t a_re, num_t a_im, num_t b_re, num_t b_im);
 
 // accessors vector based
-ssz_t    mad_ctpsa_getv    (const ctpsa_t *t, idx_t i, ssz_t n,       cpx_t v[]); // return copied length
-ssz_t    mad_ctpsa_setv    (      ctpsa_t *t, idx_t i, ssz_t n, const cpx_t v[]); // return copied length
+void     mad_ctpsa_getv    (const ctpsa_t *t, idx_t i, ssz_t n,       cpx_t v[]); // return copied length
+void     mad_ctpsa_setv    (      ctpsa_t *t, idx_t i, ssz_t n, const cpx_t v[]); // return copied length
 
 // operators
 log_t    mad_ctpsa_equ     (const ctpsa_t *a, const ctpsa_t *b, num_t tol_);
@@ -160,6 +152,7 @@ void     mad_ctpsa_tpow    (const  tpsa_t *a, const ctpsa_t *b, ctpsa_t *c);
 
 // functions
 num_t    mad_ctpsa_nrm     (const ctpsa_t *a);
+void     mad_ctpsa_unit    (const ctpsa_t *a, ctpsa_t *c);
 void     mad_ctpsa_conj    (const ctpsa_t *a, ctpsa_t *c);
 void     mad_ctpsa_sqrt    (const ctpsa_t *a, ctpsa_t *c);
 void     mad_ctpsa_exp     (const ctpsa_t *a, ctpsa_t *c);
@@ -188,7 +181,6 @@ void     mad_ctpsa_acoth   (const ctpsa_t *a, ctpsa_t *c);
 void     mad_ctpsa_asinhc  (const ctpsa_t *a, ctpsa_t *c);
 void     mad_ctpsa_erf     (const ctpsa_t *a, ctpsa_t *c);
 void     mad_ctpsa_erfc    (const ctpsa_t *a, ctpsa_t *c);
-void     mad_ctpsa_unit    (const ctpsa_t *a, ctpsa_t *c);
 
 void     mad_ctpsa_acc     (const ctpsa_t *a, cpx_t v, ctpsa_t *c); // c += v*a, aliasing OK
 void     mad_ctpsa_scl     (const ctpsa_t *a, cpx_t v, ctpsa_t *c); // c  = v*a
@@ -280,18 +272,17 @@ void     mad_ctpsa_eval     (ssz_t na, const ctpsa_t *ma[], ssz_t nb, const cpx_
 void     mad_ctpsa_mconv    (ssz_t na, const ctpsa_t *ma[], ssz_t nc,                      ctpsa_t *mc[], ssz_t n, idx_t t2r_[], int pb);
 
 // I/O
-#define NAMSZ 16
-
-// I/O
 void     mad_ctpsa_print    (const ctpsa_t *t, str_t name_, num_t eps_, int nohdr_, FILE *stream_);
 ctpsa_t* mad_ctpsa_scan     (                                                       FILE *stream_);
 const
 desc_t*  mad_ctpsa_scan_hdr (      int *kind_, char  name_[NAMSZ],                  FILE *stream_);
 void     mad_ctpsa_scan_coef(      ctpsa_t *t,                                      FILE *stream_);
-void     mad_ctpsa_debug    (const ctpsa_t *t, str_t name_, str_t fnam_, int line_, FILE *stream_);
 
 // unsafe operation (mo vs allocated!!)
-ctpsa_t* mad_ctpsa_init (ctpsa_t *t, const desc_t *d, ord_t mo);
+ctpsa_t* mad_ctpsa_init     (      ctpsa_t *t, const desc_t *d, ord_t mo);
+
+// debug
+int      mad_ctpsa_debug    (const ctpsa_t *t, str_t name_, str_t fnam_, int line_, FILE *stream_);
 
 // ---------------------------------------------------------------------------o
 

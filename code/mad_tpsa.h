@@ -36,14 +36,18 @@
 #include "mad_mono.h"
 #include "mad_desc.h"
 
-// --- types ------------------------------------------------------------------o
+// --- constants --------------------------------------------------------------o
 
-typedef struct tpsa_ tpsa_t;
+enum { NAMSZ=16 };
 
 // --- globals ----------------------------------------------------------------o
 
 extern const ord_t mad_tpsa_dflt;
 extern const ord_t mad_tpsa_same;
+
+// --- types ------------------------------------------------------------------o
+
+typedef struct tpsa_ tpsa_t;
 
 // --- interface --------------------------------------------------------------o
 
@@ -56,11 +60,14 @@ void    mad_tpsa_del     (const tpsa_t *t);
 const
 desc_t* mad_tpsa_desc    (const tpsa_t *t);
 ssz_t   mad_tpsa_len     (const tpsa_t *t);
+ord_t   mad_tpsa_mo      (      tpsa_t *t, ord_t   mo_ ); // set mo if mo <= ao
 int32_t mad_tpsa_uid     (      tpsa_t *t, int32_t uid_); // set uid if != 0
 str_t   mad_tpsa_nam     (      tpsa_t *t, str_t   nam_); // set nam if != null
 ord_t   mad_tpsa_ord     (const tpsa_t *t, log_t   hi_ ); // mo or hi
 log_t   mad_tpsa_isnul   (const tpsa_t *t);
+log_t   mad_tpsa_isval   (const tpsa_t *t);
 log_t   mad_tpsa_isvalid (const tpsa_t *t);
+num_t   mad_tpsa_density (const tpsa_t *t, num_t eps); // ratio nz/nc in [lo,hi]
 
 // initialization / manipulation
 void    mad_tpsa_copy    (const tpsa_t *t, tpsa_t *r);
@@ -73,7 +80,7 @@ void    mad_tpsa_clrord  (      tpsa_t *t, ord_t ord);
 void    mad_tpsa_setvar  (      tpsa_t *t, num_t v, idx_t iv, num_t scl_);
 void    mad_tpsa_setprm  (      tpsa_t *t, num_t v, idx_t ip);
 void    mad_tpsa_setval  (      tpsa_t *t, num_t v);
-log_t   mad_tpsa_update  (      tpsa_t *t, num_t eps_);
+void    mad_tpsa_update  (      tpsa_t *t);
 void    mad_tpsa_clear   (      tpsa_t *t);
 
 // indexing / monomials (return idx_t = -1 if invalid)
@@ -84,25 +91,22 @@ idx_t   mad_tpsa_idxsm   (const tpsa_t *t,          ssz_t n, const idx_t m []); 
 idx_t   mad_tpsa_cycle   (const tpsa_t *t, idx_t i, ssz_t n,       ord_t m_[], num_t *v_);
 
 // accessors
-num_t   mad_tpsa_get0    (const tpsa_t *t);
 num_t   mad_tpsa_geti    (const tpsa_t *t, idx_t i);
 num_t   mad_tpsa_gets    (const tpsa_t *t, ssz_t n,       str_t s  ); // string mono "[0-9]*"
 num_t   mad_tpsa_getm    (const tpsa_t *t, ssz_t n, const ord_t m[]);
 num_t   mad_tpsa_getsm   (const tpsa_t *t, ssz_t n, const idx_t m[]); // sparse mono [(i,o)]
-void    mad_tpsa_set0    (      tpsa_t *t, /* i = 0 */               num_t a, num_t b);
 void    mad_tpsa_seti    (      tpsa_t *t, idx_t i,                  num_t a, num_t b);
 void    mad_tpsa_sets    (      tpsa_t *t, ssz_t n,       str_t s  , num_t a, num_t b);
 void    mad_tpsa_setm    (      tpsa_t *t, ssz_t n, const ord_t m[], num_t a, num_t b);
 void    mad_tpsa_setsm   (      tpsa_t *t, ssz_t n, const idx_t m[], num_t a, num_t b);
-void    mad_tpsa_cpy0    (const tpsa_t *t, tpsa_t *r);
 void    mad_tpsa_cpyi    (const tpsa_t *t, tpsa_t *r,          idx_t i);
 void    mad_tpsa_cpys    (const tpsa_t *t, tpsa_t *r, ssz_t n, str_t s); // string mono "[0-9]*"
 void    mad_tpsa_cpym    (const tpsa_t *t, tpsa_t *r, ssz_t n, const ord_t m[]);
 void    mad_tpsa_cpysm   (const tpsa_t *t, tpsa_t *r, ssz_t n, const idx_t m[]); // sparse mono [(i,o)]
 
 // accessors vector based
-ssz_t   mad_tpsa_getv    (const tpsa_t *t, idx_t i, ssz_t n,       num_t v[]); // return copied length
-ssz_t   mad_tpsa_setv    (      tpsa_t *t, idx_t i, ssz_t n, const num_t v[]); // return copied length
+void    mad_tpsa_getv    (const tpsa_t *t, idx_t i, ssz_t n,       num_t v[]); // return copied length
+void    mad_tpsa_setv    (      tpsa_t *t, idx_t i, ssz_t n, const num_t v[]); // return copied length
 
 // operators
 log_t   mad_tpsa_equ     (const tpsa_t *a, const tpsa_t *b, num_t tol_);
@@ -117,6 +121,7 @@ void    mad_tpsa_pown    (const tpsa_t *a, num_t         v, tpsa_t *c);
 
 // functions
 num_t   mad_tpsa_nrm     (const tpsa_t *a);
+void    mad_tpsa_unit    (const tpsa_t *a, tpsa_t *c);
 void    mad_tpsa_abs     (const tpsa_t *a, tpsa_t *c);
 void    mad_tpsa_sqrt    (const tpsa_t *a, tpsa_t *c);
 void    mad_tpsa_exp     (const tpsa_t *a, tpsa_t *c);
@@ -145,7 +150,6 @@ void    mad_tpsa_acoth   (const tpsa_t *a, tpsa_t *c);
 void    mad_tpsa_asinhc  (const tpsa_t *a, tpsa_t *c);
 void    mad_tpsa_erf     (const tpsa_t *a, tpsa_t *c);
 void    mad_tpsa_erfc    (const tpsa_t *a, tpsa_t *c);
-void    mad_tpsa_unit    (const tpsa_t *a, tpsa_t *c);
 
 void    mad_tpsa_acc     (const tpsa_t *a, num_t v, tpsa_t *c); // c += v*a, aliasing OK
 void    mad_tpsa_scl     (const tpsa_t *a, num_t v, tpsa_t *c); // c  = v*a
@@ -203,17 +207,19 @@ void    mad_tpsa_eval     (ssz_t na, const tpsa_t *ma[], ssz_t nb, const num_t  
 void    mad_tpsa_mconv    (ssz_t na, const tpsa_t *ma[], ssz_t nc,                     tpsa_t *mc[], ssz_t n, idx_t t2r_[], int pb);
 
 // I/O
-#define NAMSZ 16
-
 void    mad_tpsa_print    (const tpsa_t *t, str_t name_, num_t eps_, int nohdr_, FILE *stream_);
 tpsa_t* mad_tpsa_scan     (                                                      FILE *stream_);
 const
 desc_t* mad_tpsa_scan_hdr (     int *kind_, char  name_[NAMSZ],                  FILE *stream_);
 void    mad_tpsa_scan_coef(      tpsa_t *t,                                      FILE *stream_);
-void    mad_tpsa_debug    (const tpsa_t *t, str_t name_, str_t fnam_, int line_, FILE *stream_);
 
 // unsafe operation (mo vs allocated!!)
-tpsa_t* mad_tpsa_init (tpsa_t *t, const desc_t *d, ord_t mo);
+tpsa_t* mad_tpsa_init     (      tpsa_t *t, const desc_t *d, ord_t mo);
+
+// debug
+int     mad_tpsa_debug    (const tpsa_t *t, str_t name_, str_t fnam_, int line_, FILE *stream_);
+void    mad_tpsa_prtdensity(FILE *stream_);
+void    mad_tpsa_clrdensity(void);
 
 // --- end --------------------------------------------------------------------o
 

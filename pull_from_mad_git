@@ -2,7 +2,7 @@
 # This is meant for maintainers of the gtpsa library and is not of general interest.
 
 # First: Download MAD if needed via:
-git clone -b dev-tpsa-new https://github.com/MethodicalAcceleratorDesign/MAD.git MAD
+git clone https://github.com/MethodicalAcceleratorDesign/MAD.git MAD
 
 cd MAD
 git pull

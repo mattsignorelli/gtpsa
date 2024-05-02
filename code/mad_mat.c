@@ -29,6 +29,8 @@
 #include "mad_vec.h"
 #include "mad_mat.h"
 
+#define MAD_USE_MADX 0
+
 // --- helpers for debug ------------------------------------------------------o
 
 #if 0

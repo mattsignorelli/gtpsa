@@ -3,7 +3,7 @@
 using BinaryBuilder, Pkg
 
 name = "GTPSA"
-version = v"1.1.3"
+version = v"1.2.1"
 
 # Collection of sources required to complete build
 sources = [

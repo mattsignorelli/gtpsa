@@ -42,8 +42,8 @@ const  ord_t  mad_tpsa_dflt = -1;
 const  ord_t  mad_tpsa_same = -2;
        num_t  mad_tpsa_eps  =  1e-40;
        ord_t  mad_tpsa_dbgo = -1; // effective only with TPSA_DEBUG > 0
-       int    mad_tpsa_dbgf =  0; // effective only with TPSA_DEBUG > 0
-       int    mad_tpsa_dbga =  0; // effective only with TPSA_DEBUG > 0
+       int    mad_tpsa_dbgf =  1; // effective only with TPSA_DEBUG > 0
+       int    mad_tpsa_dbga =  1; // effective only with TPSA_DEBUG > 0
 
 // last descriptor created or searched (used to create GTPSA when d is NULL)
 const desc_t *mad_desc_curr = NULL;

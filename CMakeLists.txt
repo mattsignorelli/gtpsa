@@ -7,7 +7,11 @@ set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3
 -Wnested-externs -Wstrict-prototypes -Wunreachable-code -Wno-vla-parameter -fno-math-errno \
 -fno-builtin-cproj -ffast-math -llapack")
 
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY /Users/mgs255/.julia/dev/GTPSA_jll/override/lib/)
+
+add_executable(bug
+  code/bug.c
+)
 
 add_library(gtpsa SHARED
   code/mad_bit.c
@@ -43,5 +47,5 @@ add_library(gtpsa SHARED
 # Find LAPACK
 find_package(LAPACK REQUIRED)
 target_link_libraries(gtpsa PUBLIC ${LAPACK_LIBRARIES})
+target_link_libraries(bug PUBLIC ${LAPACK_LIBRARIES} gtpsa)
 
-install(TARGETS gtpsa LIBRARY DESTINATION lib)

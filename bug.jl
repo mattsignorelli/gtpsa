@@ -1,10 +1,10 @@
 using GTPSA
 import GTPSA: Desc, RTPSA, CTPSA
 using Printf
-
-const NV = Cint(4);
-const MO = UInt8(5);
 const MAD_TPSA = GTPSA.MAD_TPSA
+
+const NV = Cint(1);
+const MO = UInt8(5);
 
 const d = @ccall MAD_TPSA.mad_desc_newv(NV::Cint, MO::Cint)::Ptr{Desc}
 

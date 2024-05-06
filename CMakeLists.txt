@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.13.2)
 set (CMAKE_C_COMPILER "gcc")
 project(gtpsa)
-set(CFLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O3 \
+set(CMAKE_C_FLAGS "-std=c99 -W -Wall -Wextra -pedantic -ffast-math -ftree-vectorize -O0 \
 -ftree-vectorize -fPIC -flto -Waggregate-return -Wcast-align -Wdisabled-optimization \
 -Wpointer-arith -Wsign-compare -Wwrite-strings -Wbad-function-cast -Wmissing-prototypes \
 -Wnested-externs -Wstrict-prototypes -Wunreachable-code -Wno-vla-parameter -fno-math-errno \
--fno-builtin-cproj -ffast-math -llapack")
+-fno-builtin-cproj -ffast-math -llapack -fsanitize=address -g")
 
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY /Users/mgs255/.julia/dev/GTPSA_jll/override/lib/)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY /home/matt/.julia/dev/GTPSA_jll/override/lib/)
 
 add_executable(bug
   code/bug.c

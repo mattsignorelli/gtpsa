@@ -7,12 +7,11 @@ version = v"1.3.1"
 
 # Collection of sources required to complete build
 sources = [
-    GitSource("https://github.com/mattsignorelli/gtpsa.git", "d055948e4ee33ee125b38749f648697a9d282acf")
+    GitSource("https://github.com/mattsignorelli/gtpsa.git", "05cef1441018c6aba26d509cc93214c4474b7909")
 ]
 
 # Bash recipe for building across all platforms
 script = raw"""
-apk del cmake
 cd $WORKSPACE/srcdir
 cd gtpsa/
 echo $CMAKE_C_FLAGS
@@ -35,10 +34,8 @@ products = [
 
 # Dependencies that must be installed before this package can be built
 dependencies = [
-    Dependency("libblastrampoline_jll"; compat="5.4.0")
-    #Dependency(PackageSpec(name="ReferenceBLAS32_jll", uuid="656ef2d0-ae68-5445-9ca0-591084a874a2")),
-    #Dependency(PackageSpec(name="LAPACK32_jll", uuid="17f450c3-bd24-55df-bb84-8c51b4b939e3")),
-    HostBuildDependency(PackageSpec(; name="CMake_jll"))
+    Dependency(PackageSpec(name="ReferenceBLAS32_jll", uuid="656ef2d0-ae68-5445-9ca0-591084a874a2")),
+    Dependency(PackageSpec(name="LAPACK32_jll", uuid="17f450c3-bd24-55df-bb84-8c51b4b939e3")),
 ]
 
 # Build the tarballs, and possibly a `build.jl` as well.

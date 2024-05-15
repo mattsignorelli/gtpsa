@@ -31,7 +31,7 @@
 #endif
 
 /* --- definition --------------------------------------------------------------
-  GTPSA are *defined* in [0] U [lo,hi] with 0 < lo <= hi <= mo <= d->mo <= 253
+  GTPSA are *defined* in [0]U[lo,hi] with 0 < lo <= hi <= mo <= ao <= d->mo<=250
     - scalar GTPSA have lo=1, hi=0, the only case where hi=0 and i.e. lo > hi.
     - new/clear/reset GTPSA are scalar GTPSA with coef[0]=0 (see reset0).
     - always true: coef[0] is defined and lo >= 1, even if coef[0] != 0.
@@ -125,8 +125,9 @@ FUN(debug) (const T *t, str_t name_, str_t fname_, int line_, FILE *stream_)
     strncpy(name, name_ ? name_ : t->nam, 48); name[47] = '\0';
     FUN(print)(t, name, 1e-40, 0, stream_);
     if (mad_tpsa_dbga <= 3) return ok;
-  } else
+  } else {
     fprintf(stream_," ** bug @ o=%d } 0x%p\n", o, (void*)t); fflush(stream_);
+  }
 
   if (d) {
     const idx_t *o2i = d->ord2idx;
@@ -220,7 +221,7 @@ ord_t
 FUN(ord) (const T *t, log_t hi_)
 {
   assert(t);
-  return hi_ ? t-> hi : t->mo;
+  return hi_ ? t->hi : t->mo;
 }
 
 log_t
@@ -266,6 +267,9 @@ FUN(init) (T *t, const D *d, ord_t mo)
 {
   assert(t && d && mo <= d->mo); DBGFUN(->);
   t->d = d, t->ao = t->mo = mo, t->uid = 0, t->nam[0] = 0, FUN(reset0)(t);
+#if TPSA_DEBUG
+  if (mad_tpsa_dbga >= 3) FOR(i,1,d->ord2idx[mo+1]) t->coef[i] = M_PI;
+#endif
   DBGTPSA(t); DBGFUN(<-); return t;
 }
 
@@ -279,7 +283,7 @@ FUN(newd) (const D *d, ord_t mo)
   T *r = mad_malloc(sizeof(T) + d->ord2idx[mo+1] * sizeof(NUM)); assert(r);
   r->d = d, r->ao = r->mo = mo, r->uid = 0, r->nam[0] = 0, FUN(reset0)(r);
 #if TPSA_DEBUG
-  if (mad_tpsa_dbga >= 3) FOR(i,1,d->ord2idx[r->ao+1]) r->coef[i] = M_PI;
+  if (mad_tpsa_dbga >= 3) FOR(i,1,d->ord2idx[mo+1]) r->coef[i] = M_PI;
 #endif
   DBGTPSA(r); DBGFUN(<-); return r;
 }
@@ -314,7 +318,7 @@ FUN(update) (T *t)
 {
   assert(t); DBGFUN(->);
   if (t->hi && FUN(nzero0 )(t,t->lo,t->hi,1) >= 0 &&
-               FUN(nzero0r)(t,t->lo,t->hi,1) >= 0) ;
+               FUN(nzero0r)(t,t->lo,t->hi,1) >= 0) {}
   DBGTPSA(t); DBGFUN(<-);
 }
 
@@ -375,12 +379,11 @@ FUN(sclord) (const T *t, T *r, log_t inv, log_t prm)
 
   FUN(copy)(t,r);
 
-  const int    np = !prm; // do not consider parameters orders
   const ord_t *co = r->d->ords, *po = r->d->prms, lo = MAX(r->lo,2);
   if (inv) { // scale coefs by 1/order
-    TPSA_SCAN(r,lo,r->hi) r->coef[i] /= co[i] - po[i] * np;
+    TPSA_SCAN(r,lo,r->hi) r->coef[i] /= co[i] - po[i] * !prm;
   } else {   // scale coefs by order
-    TPSA_SCAN(r,lo,r->hi) r->coef[i] *= co[i] - po[i] * np;
+    TPSA_SCAN(r,lo,r->hi) r->coef[i] *= co[i] - po[i] * !prm;
   }
   DBGTPSA(r); DBGFUN(<-);
 }
@@ -389,10 +392,10 @@ void
 FUN(clrord) (T *t, ord_t o)
 {
   assert(t); DBGFUN(->);
-  if (!o) t->coef[0] = 0;                                   else
-  if (o  > t->lo && o < t->hi) FUN(clear0)(t, o, o);        else
-  if (o == t->lo && FUN(nzero0 )(t,t->lo+1,t->hi,1) >= 0) ; else
-  if (o == t->hi && FUN(nzero0r)(t,t->lo,t->hi-1,1) >= 0) ;
+  if (!o) t->coef[0] = 0;                                    else
+  if (o  > t->lo && o < t->hi) FUN(clear0)(t, o, o);         else
+  if (o == t->lo && FUN(nzero0 )(t,t->lo+1,t->hi,1) >= 0) {} else
+  if (o == t->hi && FUN(nzero0r)(t,t->lo,t->hi-1,1) >= 0) {}
   DBGTPSA(t); DBGFUN(<-);
 }
 
@@ -538,8 +541,9 @@ FUN(convert) (const T *t, T *r_, ssz_t n, idx_t t2r_[n], int pb)
   skip: ;
   }
 
-  if (r != r_) { FUN(copy)(r,r_); REL_TMPX(r); } else
-  DBGTPSA(r_); DBGFUN(<-);
+  if (r != r_) { FUN(copy)(r,r_); REL_TMPX(r); }
+  else         { DBGTPSA(r_); }
+  DBGFUN(<-);
 }
 
 // --- indexing / monomials ---------------------------------------------------o
@@ -628,7 +632,7 @@ FUN(getsm) (const T *t, ssz_t n, const idx_t m[n])
 
 /* getv cases
    0   1     lo=2      hi=3        mo=4
-  [.|.....|........|..........|............]
+  [.|?????|........|..........|????????????]
     |i000n|        |          |               lo=2, hi=1
     | i0n |        |          |               lo=2, hi=1
     | i00n|        |          |               lo=2, hi=1
@@ -653,19 +657,18 @@ FUN(getv) (const T *t, idx_t i, ssz_t n, NUM v[n])
   const idx_t *o2i = t->d->ord2idx;
   ord_t lo = t->lo;
   ord_t hi = MIN(ord[nn-1], t->hi);
-
   ssz_t n0 = MIN(o2i[lo  ], nn);
-  ssz_t nj = MAX(o2i[lo  ], i );
   ssz_t ni = MIN(o2i[hi+1], nn);
 
 //ord_t mo = t->mo, go = MIN(t->ao, mad_tpsa_dbgo);
-//printf("getv: i=%2d, n=%2d, lo=%d, hi=%d, mo=%d(%d), n0=%2d, ni=%2d, nj=%2d, nn=%2d %c\n",
-//              i    , n    , lo   , hi   , mo,   go , n0    , ni    , nj    , nn,
+//printf("getv: i=%2d, n=%2d, lo=%d, hi=%d, mo=%d(%d), n0=%2d, ni=%2d, nn=%2d %c\n",
+//              i    , n    , lo   , hi   , mo,   go , n0    , ni    , nn,
 //              ni == i+n ? ' ' : '*');
 
-  FOR(j, i,n0) v[j-i] = 0;
-  FOR(j,nj,ni) v[j-i] = t->coef[j];
-  FOR(j,ni,nn) v[j-i] = 0;
+  idx_t j = i;
+  for(; j < n0; j++) v[j-i] = 0;
+  for(; j < ni; j++) v[j-i] = t->coef[j];
+  for(; j < nn; j++) v[j-i] = 0;
 
   if (!i) v[0] = t->coef[0];
 
@@ -696,8 +699,8 @@ FUN(seti) (T *t, idx_t i, NUM a, NUM b)
     t->coef[i] = v;
   } else {
     t->coef[i] = 0;
-    if (o == t->lo && FUN(nzero0 )(t,t->lo,t->hi,1) >= 0) ; else
-    if (o == t->hi && FUN(nzero0r)(t,t->lo,t->hi,1) >= 0) ;
+    if (o == t->lo && FUN(nzero0 )(t,t->lo,t->hi,1) >= 0) {} else
+    if (o == t->hi && FUN(nzero0r)(t,t->lo,t->hi,1) >= 0) {}
   }
   DBGTPSA(t); DBGFUN(<-);
 }
@@ -734,7 +737,7 @@ FUN(setsm) (T *t, ssz_t n, const idx_t m[n], NUM a, NUM b)
 
 /* setv cases
    0   1     lo=2      hi=3        mo=4
-  [.|.....|........|..........|............]
+  [.|?????|........|..........|????????????]
     |i...n|        |          |               lo=1, hi=1
     |0i.n0|        |          |               lo=1, hi=1
     |0i..n|        |          |               lo=1, hi=1

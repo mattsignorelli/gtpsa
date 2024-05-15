@@ -7,11 +7,12 @@ version = v"1.3.1"
 
 # Collection of sources required to complete build
 sources = [
-    GitSource("https://github.com/mattsignorelli/gtpsa.git", "74988da38ef743112c282a3125131be0376d12d9")
+    GitSource("https://github.com/mattsignorelli/gtpsa.git", "0d5bb1fbeb3a663e7af53540d62cdfab05d76d8e")
 ]
 
 # Bash recipe for building across all platforms
 script = raw"""
+apk del cmake
 cd $WORKSPACE/srcdir
 cd gtpsa/
 echo ${CMAKE_TARGET_TOOLCHAIN%.*}
@@ -33,8 +34,9 @@ products = [
 
 # Dependencies that must be installed before this package can be built
 dependencies = [
-    Dependency(PackageSpec(name="OpenBLAS32_jll", uuid="656ef2d0-ae68-5445-9ca0-591084a874a2"))
-    Dependency(PackageSpec(name="LAPACK32_jll", uuid="17f450c3-bd24-55df-bb84-8c51b4b939e3"))
+    Dependency(PackageSpec(name="OpenBLAS32_jll", uuid="656ef2d0-ae68-5445-9ca0-591084a874a2")),
+    Dependency(PackageSpec(name="LAPACK32_jll", uuid="17f450c3-bd24-55df-bb84-8c51b4b939e3")),
+    HostBuildDependency(PackageSpec(; name="CMake_jll"))
 ]
 
 # Build the tarballs, and possibly a `build.jl` as well.

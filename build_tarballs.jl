@@ -7,15 +7,13 @@ version = v"1.3.1"
 
 # Collection of sources required to complete build
 sources = [
-    GitSource("https://github.com/mattsignorelli/gtpsa.git", "05cef1441018c6aba26d509cc93214c4474b7909")
+    GitSource("https://github.com/mattsignorelli/gtpsa.git", "9f886530f4bbbcfae343c84f8f9a329bad025c5f")
 ]
 
 # Bash recipe for building across all platforms
 script = raw"""
 cd $WORKSPACE/srcdir
 cd gtpsa/
-echo $CMAKE_C_FLAGS
-echo ${CMAKE_TARGET_TOOLCHAIN%.*}
 cmake . -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TARGET_TOOLCHAIN%.*}_gcc.cmake -DCMAKE_BUILD_TYPE=Release
 make
 make install
@@ -34,9 +32,9 @@ products = [
 
 # Dependencies that must be installed before this package can be built
 dependencies = [
-    Dependency(PackageSpec(name="ReferenceBLAS32_jll", uuid="656ef2d0-ae68-5445-9ca0-591084a874a2")),
+    Dependency(PackageSpec(name="OpenBLAS32_jll", uuid="656ef2d0-ae68-5445-9ca0-591084a874a2")),
     Dependency(PackageSpec(name="LAPACK32_jll", uuid="17f450c3-bd24-55df-bb84-8c51b4b939e3")),
 ]
 
 # Build the tarballs, and possibly a `build.jl` as well.
-build_tarballs(ARGS, name, version, sources, script, platforms, products, dependencies; julia_compat="1.9", preferred_gcc_version = v"11.1.0")
+build_tarballs(ARGS, name, version, sources, script, platforms, products, dependencies; julia_compat="1.6", preferred_gcc_version = v"11.1.0")

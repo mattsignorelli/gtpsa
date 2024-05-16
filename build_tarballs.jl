@@ -7,7 +7,7 @@ version = v"1.3.1"
 
 # Collection of sources required to complete build
 sources = [
-    GitSource("https://github.com/mattsignorelli/gtpsa.git", "9f886530f4bbbcfae343c84f8f9a329bad025c5f")
+    GitSource("https://github.com/mattsignorelli/gtpsa.git", "6d407e5a0978b3d9e205df9f1b312ed4477e3435")
 ]
 
 # Bash recipe for building across all platforms

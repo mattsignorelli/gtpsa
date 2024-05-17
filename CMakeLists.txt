@@ -3,7 +3,7 @@ set (CMAKE_C_COMPILER "gcc")
 project(gtpsa)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -W -Wall -Wextra -pedantic \
--fPIC -flto -Waggregate-return -Wcast-align -Wdisabled-optimization \
+-flto -Waggregate-return -Wcast-align -Wdisabled-optimization \
 -Wpointer-arith -Wsign-compare -Wwrite-strings -Wbad-function-cast -Wmissing-prototypes \
 -Wnested-externs -Wstrict-prototypes -Wunreachable-code -Wno-vla-parameter")
 # -ftree-vectorize -flto -fno-math-errno -fno-builtin-cproj

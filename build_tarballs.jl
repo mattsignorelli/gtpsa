@@ -7,7 +7,7 @@ version = v"1.3.2"
 
 # Collection of sources required to complete build
 sources = [
-    GitSource("https://github.com/mattsignorelli/gtpsa.git", "1b16d1082647e725d5354ca7e6259ab8a319fdbd")
+    GitSource("https://github.com/mattsignorelli/gtpsa.git", "a99724dba73cd3c492295deac0cdaf9c9ce22c64")
 ]
 
 # Bash recipe for building across all platforms
@@ -33,4 +33,4 @@ products = [
 # Dependencies that must be installed before this package can be built
 dependencies = [Dependency(PackageSpec(name="OpenBLAS32_jll", uuid="656ef2d0-ae68-5445-9ca0-591084a874a2"))]
 # Build the tarballs, and possibly a `build.jl` as well.
-build_tarballs(ARGS, name, version, sources, script, platforms, products, dependencies; julia_compat="1.6", preferred_gcc_version = v"11.1.0")
+build_tarballs(ARGS, name, version, sources, script, platforms, products, dependencies; lazy_artifacts=false, julia_compat="1.6", preferred_gcc_version = v"11.1.0")

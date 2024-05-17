@@ -33,4 +33,4 @@ products = [
 # Dependencies that must be installed before this package can be built
 dependencies = [Dependency(PackageSpec(name="OpenBLAS32_jll", uuid="656ef2d0-ae68-5445-9ca0-591084a874a2"))]
 # Build the tarballs, and possibly a `build.jl` as well.
-build_tarballs(ARGS, name, version, sources, script, platforms, products, dependencies; lazy_artifacts=false, julia_compat="1.6", preferred_gcc_version = v"11.1.0")
+build_tarballs(ARGS, name, version, sources, script, platforms, products, dependencies; julia_compat="1.6", preferred_gcc_version = v"11.1.0")

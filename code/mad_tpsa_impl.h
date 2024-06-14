@@ -91,11 +91,11 @@ mad_tpsa_copy00 (const tpsa_t *a, const tpsa_t *b, tpsa_t *r)
 }
 
 static inline void // print TPSA header (for debug)
-mad_tpsa_print0 (const tpsa_t *a, str_t nam_)
+mad_tpsa_print0 (const tpsa_t *t, str_t nam_)
 {
-  assert(a && a->d);
+  assert(t && t->d);
   printf("'%s' { lo=%d hi=%d mo=%d ao=%d uid=%d did=%d }\n",
-         nam_?nam_:"?", a->lo, a->hi, a->mo, a->ao, a->uid, a->d->id);
+         nam_?nam_:"?", t->lo, t->hi, t->mo, t->ao, t->uid, t->d->id);
 }
 
 // --- functions accessing lo, hi, coef[0]
@@ -151,6 +151,7 @@ mad_tpsa_nzero0r (const tpsa_t *t, ord_t lo, ord_t hi, log_t upt)
       return i;
     }
   }
+  if (upt) ((tpsa_t*)t)->lo = 1, ((tpsa_t*)t)->hi = 0;
   return -1;
 }
 

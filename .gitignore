@@ -4,6 +4,7 @@
 /cmake_install.cmake
 /lib
 /MAD
+/MAD-NG
 /build
 /products
 .nfs*

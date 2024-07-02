@@ -1643,7 +1643,7 @@ mad_mat_gsolve (const num_t a[], const num_t b[], const num_t c[], const num_t d
   mad_alloc_tmp(num_t, wk, lwork);
   dgglse_(&nm, &nn, &np, ta, &nm, tb, &np, tc, td, x,  wk, &lwork, &info); // compute
 
-  if (nrm_) *nrm_ = mad_vec_norm(tc+(n-p), m-(n-p)); // residues
+  if (nrm_) *nrm_ = mad_vec_nrm(tc+(n-p), m-(n-p)); // residues
 
   mad_free_tmp(wk);
   mad_free_tmp(ta); mad_free_tmp(tb); mad_free_tmp(tc); mad_free_tmp(td);
@@ -1678,7 +1678,7 @@ mad_cmat_gsolve (const cpx_t a[], const cpx_t b[], const cpx_t c[], const cpx_t 
   mad_alloc_tmp(cpx_t, wk, lwork);
   zgglse_(&nm, &nn, &np, ta, &nm, tb, &np, tc, td, x,  wk, &lwork, &info); // compute
 
-  if (nrm_) *nrm_ = mad_cvec_norm(tc+(n-p), m-(n-p)); // residues
+  if (nrm_) *nrm_ = mad_cvec_nrm(tc+(n-p), m-(n-p)); // residues
 
   mad_free_tmp(wk);
   mad_free_tmp(ta); mad_free_tmp(tb); mad_free_tmp(tc); mad_free_tmp(td);

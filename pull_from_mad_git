@@ -18,3 +18,13 @@ cp MAD-NG/src/libnlopt/mad_log.c code/
 
 # After pulling, remember to delete micado/other unnecessary orbit correction 
 # code from mad_mat.c !!
+# Also set DESC_USE_TMP = 1 in mad_desc_impl.h
+# Also you must change the tpsa structs in mad_tpsa_impl.h and mad_ctpsa_impl.h
+# to NOT use flexible array members by changing coef[] to *coef and 
+# in mad_tpsa.c modify FUN(newd) line:
+# T *r = mad_malloc(sizeof(T) + d->ord2idx[mo+1] * sizeof(NUM)); assert(r);
+# to instead be 
+# T *r = mad_malloc(sizeof(T)); r->coef =  mad_malloc(d->ord2idx[mo+1] * sizeof(NUM)); assert(r);
+# and modifying FUN(del) to add 
+# mad_free(t->coef);
+# before the mad_free

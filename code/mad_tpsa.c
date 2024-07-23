@@ -276,7 +276,7 @@ FUN(newd) (const D *d, ord_t mo)
 {
   assert(d); DBGFUN(->);
   mo = MIN(mo, d->mo);
-  T *r = mad_malloc(sizeof(T) + d->ord2idx[mo+1] * sizeof(NUM)); assert(r);
+  T *r = mad_malloc(sizeof(T)); r->coef =  mad_malloc(d->ord2idx[mo+1] * sizeof(NUM)); assert(r);
   r->d = d, r->ao = r->mo = mo, r->uid = 0, r->nam[0] = 0, FUN(reset0)(r);
 #if TPSA_DEBUG
   if (mad_tpsa_dbga >= 3) FOR(i,1,d->ord2idx[mo+1]) r->coef[i] = M_PI;
@@ -295,6 +295,7 @@ void
 FUN(del) (const T *t)
 {
   DBGFUN(->);
+  mad_free(t->coef);
   mad_free((void*)t);
   DBGFUN(<-);
 }

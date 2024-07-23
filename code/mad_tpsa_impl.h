@@ -34,7 +34,7 @@ struct tpsa_ {  // warning: must be identical to LuaJIT def (see mad_gtpsa.mad)
   ord_t   lo, hi, mo, ao; // lowest/highest used ord, max ord, allocated ord
   int32_t uid;            // special user field for external use (and padding)
   char    nam[NAMSZ];     // tpsa name (max 15 chars)
-  num_t   coef[]; // warning: must be identical to ctpsa up to coef excluded
+  num_t   *coef; // warning: must be identical to ctpsa up to coef excluded
 };
 
 // --- macros -----------------------------------------------------------------o

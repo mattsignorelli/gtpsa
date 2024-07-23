@@ -7,7 +7,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -W -Wall -Wextra -pedantic \
 -Waggregate-return -Wcast-align -Wdisabled-optimization \
 -Wpointer-arith -Wsign-compare -Wwrite-strings -Wbad-function-cast -Wmissing-prototypes \
 -Wnested-externs -Wstrict-prototypes -Wunreachable-code -Wno-vla-parameter \
--fno-math-errno -fno-builtin-cproj")
+-fno-math-errno -fno-builtin-cproj -fopenmp")
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 

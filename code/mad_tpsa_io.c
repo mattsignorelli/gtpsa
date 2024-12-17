@@ -19,6 +19,7 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "mad_mem.h"
 #include "mad_str.h"

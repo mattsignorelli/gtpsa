@@ -39,13 +39,10 @@
 
 // --- debugging --------------------------------------------------------------o
 
-static num_t dst_cnt  = 0;
-static num_t dst_sum  = 0;
-static num_t dst_sum2 = 0;
-
 static inline num_t
 density (const T *t, num_t *rr_mo_)
 {
+  D *d = (D*)t->d;
   long nz = t->coef[0] != 0;
   long nn = 1;
 
@@ -55,9 +52,9 @@ density (const T *t, num_t *rr_mo_)
   }
 
   num_t rr = (num_t)nz / nn;
-  dst_cnt  += 1;
-  dst_sum  += rr;
-  dst_sum2 += rr*rr;
+  d->dst_n   += 1;
+  d->dst_var += SQR(rr - d->dst_mu)/d->dst_n*(d->dst_n-1);
+  d->dst_mu  +=    (rr - d->dst_mu)/d->dst_n;
 
   if (rr_mo_) *rr_mo_ = rr*nn / t->d->ord2idx[t->mo+1];
   return rr;
@@ -213,18 +210,22 @@ FUN(isvalid) (const T *t)
 }
 
 num_t
-FUN(density) (const T *t, num_t *mean_, num_t *var_)
+FUN(density) (const T *t, num_t stat_[2], log_t reset)
 {
   assert(t);
-  num_t dst = density(t, 0);
+  D *d = (D*)t->d;
 
-  if (mean_ || var_) {
-    num_t mu = dst_sum/dst_cnt;
-    if (mean_) *mean_ = mu;
-    if (var_ ) *var_  = dst_sum2/dst_cnt - mu*mu;
+  if (reset)
+    return d->dst_var = d->dst_mu = d->dst_n = 0;
+
+  if (stat_) {
+    num_t nn = MAX(1,d->dst_n);
+    stat_[0] = d->dst_mu;
+    stat_[1] = sqrt(d->dst_var/nn);
+    return d->dst_n;
   }
 
-  return dst;
+  return density(t, 0);
 }
 
 // --- init (unsafe) ----------------------------------------------------------o
@@ -247,7 +248,7 @@ FUN(newd) (const D *d, ord_t mo)
 {
   assert(d); DBGFUN(->);
   mo = MIN(mo, d->mo);
-  T *r = mad_malloc(sizeof(T)); r->coef = mad_malloc(d->ord2idx[mo+1] * sizeof(NUM)); assert(r);
+  T *r = mad_malloc(sizeof(T)); r->coef =  mad_malloc(d->ord2idx[mo+1] * sizeof(NUM)); assert(r);
   r->d = d, r->ao = r->mo = mo, r->uid = 0, r->nam[0] = 0, FUN(reset0)(r);
 #if TPSA_DEBUG
   if (mad_tpsa_dbga >= 3) FOR(i,1,d->ord2idx[mo+1]) r->coef[i] = M_PI;
@@ -392,12 +393,12 @@ FUN(cutord) (const T *t, T *r, int o)
   ensure(IS_COMPAT(t,r), "incompatibles GTPSA (descriptors differ)");
 
   if (o <= 0) {    // cut 0..|o|, see copy0 with t->lo = |o|+1
-    r->lo = 1-o;             // min 1 -> keep 1..
+    r->lo = 1-o;                    // min 1 -> keep 1..
     r->hi = MIN(t->hi, r->mo);
     r->coef[0] = 0;
   } else {         // cut |o|..mo, see copy0 with t->hi = |o|-1
     r->lo = t->lo;
-    r->hi = MIN(o-1, r->mo); // min 0 -> cut 1..
+    r->hi = MIN(o-1, t->hi, r->mo); // min 0 -> cut 1..
     r->coef[0] = t->coef[0];
   }
 

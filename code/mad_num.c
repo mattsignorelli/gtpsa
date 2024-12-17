@@ -28,12 +28,12 @@
 // --- helpers ----------------------------------------------------------------o
 
 static inline num_t
-fact(int n)
+fact2(int n) // n!!
 {
-  static num_t f[171] = {1, 0};
+  static num_t f[171] = {1, 1, 0};
 
-  if (!f[1])
-    for (int i=1; i < 171; ++i) f[i] = i*f[i-1];
+  if (!f[2])
+    for (int i=2; i < 171; ++i) f[i] = i*f[i-2];
 
   return n < 171 ? f[n] : INFINITY;
 }
@@ -63,7 +63,23 @@ num_t mad_num_fact (int n)
 
   if (n < 0) n = -n, s = n & 1 ? -s : s;
 
-  return s*fact(n);
+  return n > 1 ? s*fact2(n)*fact2(n-1) : s;
+}
+
+num_t mad_num_fact2 (int n)
+{
+  int s = 1;
+
+  if (n < 0) n = -n, s = n & 1 ? -s : s;
+
+  return n > 1 ? s*fact2(n) : s;
+}
+
+num_t mad_num_binom (int n, int k)
+{
+  if (k < 0 || k > n) return 0;
+
+  return (mad_num_fact(n)/mad_num_fact(k)) / mad_num_fact(n-k);
 }
 
 num_t mad_num_sinc (num_t x)
@@ -278,37 +294,37 @@ void mad_cpx_pow_r (num_t x_re, num_t x_im, num_t y_re, num_t y_im, cpx_t *r)
 
 #include "mad_erfw.h"
 
-num_t mad_num_wf    (num_t x) { return Faddeeva_w_im     (x); }
-num_t mad_num_erf   (num_t x) { return Faddeeva_erf_re   (x); }
-num_t mad_num_erfc  (num_t x) { return Faddeeva_erfc_re  (x); }
-num_t mad_num_erfi  (num_t x) { return Faddeeva_erfi_re  (x); }
-num_t mad_num_erfcx (num_t x) { return Faddeeva_erfcx_re (x); }
-num_t mad_num_dawson(num_t x) { return Faddeeva_Dawson_re(x); }
+num_t mad_num_wf    (num_t x) { return Faddeeva_w        (x, 0); }
+num_t mad_num_erf   (num_t x) { return Faddeeva_erf_re   (x);    }
+num_t mad_num_erfc  (num_t x) { return Faddeeva_erfc_re  (x);    }
+num_t mad_num_erfi  (num_t x) { return Faddeeva_erfi_re  (x);    }
+num_t mad_num_erfcx (num_t x) { return Faddeeva_erfcx_re (x);    }
+num_t mad_num_dawson(num_t x) { return Faddeeva_Dawson_re(x);    }
 
-cpx_t mad_cpx_wf    (cpx_t x, num_t relerr) { return Faddeeva_w     (x, relerr); }
-cpx_t mad_cpx_erf   (cpx_t x, num_t relerr) { return Faddeeva_erf   (x, relerr); }
-cpx_t mad_cpx_erfc  (cpx_t x, num_t relerr) { return Faddeeva_erfc  (x, relerr); }
-cpx_t mad_cpx_erfi  (cpx_t x, num_t relerr) { return Faddeeva_erfi  (x, relerr); }
-cpx_t mad_cpx_erfcx (cpx_t x, num_t relerr) { return Faddeeva_erfcx (x, relerr); }
-cpx_t mad_cpx_dawson(cpx_t x, num_t relerr) { return Faddeeva_Dawson(x, relerr); }
+cpx_t mad_cpx_wf    (cpx_t x) { return Faddeeva_w     (x, 0); }
+cpx_t mad_cpx_erf   (cpx_t x) { return Faddeeva_erf   (x, 0); }
+cpx_t mad_cpx_erfc  (cpx_t x) { return Faddeeva_erfc  (x, 0); }
+cpx_t mad_cpx_erfi  (cpx_t x) { return Faddeeva_erfi  (x, 0); }
+cpx_t mad_cpx_erfcx (cpx_t x) { return Faddeeva_erfcx (x, 0); }
+cpx_t mad_cpx_dawson(cpx_t x) { return Faddeeva_Dawson(x, 0); }
 
-void mad_cpx_wf_r (num_t x_re, num_t x_im, num_t relerr, cpx_t *r)
-{ CHKR; *r = Faddeeva_w (CPX(x), relerr); }
+void mad_cpx_wf_r (num_t x_re, num_t x_im, cpx_t *r)
+{ CHKR; *r = Faddeeva_w (CPX(x), 0); }
 
-void mad_cpx_erf_r (num_t x_re, num_t x_im, num_t relerr, cpx_t *r)
-{ CHKR; *r = Faddeeva_erf (CPX(x), relerr); }
+void mad_cpx_erf_r (num_t x_re, num_t x_im, cpx_t *r)
+{ CHKR; *r = Faddeeva_erf (CPX(x), 0); }
 
-void mad_cpx_erfc_r (num_t x_re, num_t x_im, num_t relerr, cpx_t *r)
-{ CHKR; *r = Faddeeva_erfc (CPX(x), relerr); }
+void mad_cpx_erfc_r (num_t x_re, num_t x_im, cpx_t *r)
+{ CHKR; *r = Faddeeva_erfc (CPX(x), 0); }
 
-void mad_cpx_erfi_r (num_t x_re, num_t x_im, num_t relerr, cpx_t *r)
-{ CHKR; *r = Faddeeva_erfi (CPX(x), relerr); }
+void mad_cpx_erfi_r (num_t x_re, num_t x_im, cpx_t *r)
+{ CHKR; *r = Faddeeva_erfi (CPX(x), 0); }
 
-void mad_cpx_erfcx_r (num_t x_re, num_t x_im, num_t relerr, cpx_t *r)
-{ CHKR; *r = Faddeeva_erfcx (CPX(x), relerr); }
+void mad_cpx_erfcx_r (num_t x_re, num_t x_im, cpx_t *r)
+{ CHKR; *r = Faddeeva_erfcx (CPX(x), 0); }
 
-void mad_cpx_dawson_r (num_t x_re, num_t x_im, num_t relerr, cpx_t *r)
-{ CHKR; *r = Faddeeva_Dawson (CPX(x), relerr); }
+void mad_cpx_dawson_r (num_t x_re, num_t x_im, cpx_t *r)
+{ CHKR; *r = Faddeeva_Dawson (CPX(x), 0); }
 
 // -- RNG XoShiRo256** --------------------------------------------------------o
 

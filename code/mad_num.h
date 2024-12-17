@@ -33,7 +33,13 @@ int   mad_num_sign     (num_t x); // -1, 0, 1
 int   mad_num_sign1    (num_t x); // -1, 1
 
 num_t mad_num_fact     (int n);   // n in Z -> n!
+num_t mad_num_fact2    (int n);   // n in Z -> n!! (wiki/Double_factorial)
+num_t mad_num_binom    (int n, int k); // (n,k) in Z^2 -> n!/(k!(n-k)!)
 
+static inline
+num_t mad_num_div      (num_t x, num_t y) { return x/y; }
+static inline
+num_t mad_num_inv      (num_t x)          { return 1/x; }
 num_t mad_num_sinc     (num_t x);
 num_t mad_num_sinhc    (num_t x);
 num_t mad_num_asinc    (num_t x);
@@ -96,19 +102,19 @@ num_t mad_num_erfi     (num_t x);
 num_t mad_num_erfcx    (num_t x);
 num_t mad_num_dawson   (num_t x);
 
-cpx_t mad_cpx_wf       (cpx_t x, num_t relerr);
-cpx_t mad_cpx_erf      (cpx_t x, num_t relerr);
-cpx_t mad_cpx_erfc     (cpx_t x, num_t relerr);
-cpx_t mad_cpx_erfi     (cpx_t x, num_t relerr);
-cpx_t mad_cpx_erfcx    (cpx_t x, num_t relerr);
-cpx_t mad_cpx_dawson   (cpx_t x, num_t relerr);
+cpx_t mad_cpx_wf       (cpx_t x);
+cpx_t mad_cpx_erf      (cpx_t x);
+cpx_t mad_cpx_erfc     (cpx_t x);
+cpx_t mad_cpx_erfi     (cpx_t x);
+cpx_t mad_cpx_erfcx    (cpx_t x);
+cpx_t mad_cpx_dawson   (cpx_t x);
 
-void  mad_cpx_wf_r     (num_t x_re, num_t x_im, num_t relerr, cpx_t *r);
-void  mad_cpx_erf_r    (num_t x_re, num_t x_im, num_t relerr, cpx_t *r);
-void  mad_cpx_erfc_r   (num_t x_re, num_t x_im, num_t relerr, cpx_t *r);
-void  mad_cpx_erfi_r   (num_t x_re, num_t x_im, num_t relerr, cpx_t *r);
-void  mad_cpx_erfcx_r  (num_t x_re, num_t x_im, num_t relerr, cpx_t *r);
-void  mad_cpx_dawson_r (num_t x_re, num_t x_im, num_t relerr, cpx_t *r);
+void  mad_cpx_wf_r     (num_t x_re, num_t x_im, cpx_t *r);
+void  mad_cpx_erf_r    (num_t x_re, num_t x_im, cpx_t *r);
+void  mad_cpx_erfc_r   (num_t x_re, num_t x_im, cpx_t *r);
+void  mad_cpx_erfi_r   (num_t x_re, num_t x_im, cpx_t *r);
+void  mad_cpx_erfcx_r  (num_t x_re, num_t x_im, cpx_t *r);
+void  mad_cpx_dawson_r (num_t x_re, num_t x_im, cpx_t *r);
 
 // --- RNG --------------------------------------------------------------------o
 

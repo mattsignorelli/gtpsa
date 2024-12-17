@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.13.2)
-set (CMAKE_C_COMPILER "gcc-11")
+set (CMAKE_C_COMPILER "gcc")
 project(gtpsa)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -W -Wall -Wextra -pedantic \
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -W -Wall -Wextra -pedantic \
 -O3 -ftree-vectorize -fPIC \
 -Waggregate-return -Wcast-align -Wdisabled-optimization \
 -Wpointer-arith -Wsign-compare -Wwrite-strings -Wbad-function-cast -Wmissing-prototypes \

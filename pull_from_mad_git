@@ -28,3 +28,4 @@ cp MAD-NG/src/libnlopt/mad_log.c code/
 # and modifying FUN(del) to add 
 # mad_free(t->coef);
 # before the mad_free
+# You will also need to add #include <stdlib.h> to the top of mad_tpsa_io.c

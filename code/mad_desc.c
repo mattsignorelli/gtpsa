@@ -548,7 +548,7 @@ static inline idx_t*
 tbl_build_LC (ord_t oa, ord_t ob, D *d)
 {
   DBGFUN(->);
-#if DESC_DEBUG > 2
+#if DESC_DEBUG > 3
   printf("tbl_set_LC oa=%d ob=%d\n", oa, ob);
 #endif
   assert(d && d->To && d->ord2idx && d->tv2to);
@@ -564,7 +564,7 @@ tbl_build_LC (ord_t oa, ord_t ob, D *d)
   // allocation lc[rows,cols]: lc[ib,ia] = lc[(ib-o2i[ob])*cols + ia-o2i[oa]]
   size_t mat_size = (size_t)rows*cols;
 
-#if DESC_DEBUG > 2
+#if DESC_DEBUG > 3
   printf("LC[%d,%d]=%zu index slots\n", rows, cols, mat_size);
 #endif
 
@@ -595,7 +595,7 @@ tbl_build_LC (ord_t oa, ord_t ob, D *d)
         idx_t ilc = hpoly_idx(ib-o2i[ob], ia-o2i[oa], cols);
         // fill lc
         lc[ilc] = ic;
-#if DESC_DEBUG > 2
+#if DESC_DEBUG > 3
         printf(" ib=%d ", ib); mad_mono_print(nn, To[ib], 0,0);
         printf(" ia=%d ", ia); mad_mono_print(nn, To[ia], 0,0);
         printf(" ic=%d ", ic); mad_mono_print(nn, m     , 0,0);
@@ -605,7 +605,7 @@ tbl_build_LC (ord_t oa, ord_t ob, D *d)
     }
   }
 
-#if DESC_DEBUG > 2
+#if DESC_DEBUG > 3
   tbl_print_LC(lc, oa, ob, o2i);
 #endif
   DBGFUN(<-);
@@ -1262,12 +1262,15 @@ mad_desc_info (const D *d, FILE *fp_)
 // --- ctors, dtor ------------------------------------------------------------o
 
 const D*
-mad_desc_newv (int nv, ord_t mo)
+mad_desc_newv (int nv_, ord_t mo_)
 {
   DBGFUN(->);
-  ensure(0 < nv && nv <= DESC_MAX_VAR,
+  int nv = MAX(nv_,1);
+  ensure(nv <= DESC_MAX_VAR,
          "invalid #variables, 0< %d <=%d", nv, DESC_MAX_VAR);
-  ensure(0 < mo && mo <= DESC_MAX_ORD,
+
+  ord_t mo = MAX(mo_,1);
+  ensure(mo <= DESC_MAX_ORD,
          "invalid maximum order, 0< %d <=%d", mo, DESC_MAX_ORD);
 
 #if DESC_DEBUG > 1
@@ -1283,23 +1286,26 @@ mad_desc_newv (int nv, ord_t mo)
 }
 
 const desc_t*
-mad_desc_newvp(int nv, ord_t mo, int np_, ord_t po_)
+mad_desc_newvp(int nv_, ord_t mo_, int np_, ord_t po_)
 {
-  if (np_ <= 0) return mad_desc_newv(nv, mo);
+  if (np_ <= 0) return mad_desc_newv(nv_, mo_);
 
   DBGFUN(->);
+  int nv = MAX(nv_,1);
   int np = MAX(np_,0);
   int nn = nv+np;
-  ensure(0 < nn && nn <= DESC_MAX_VAR,
+  ensure(nn <= DESC_MAX_VAR,
          "invalid #variables+#parameters, 0< %d <=%d", nn, DESC_MAX_VAR);
-  ensure(0 < mo && mo <= DESC_MAX_ORD,
+
+  ord_t mo = MAX(mo_,1);
+  ensure(mo <= DESC_MAX_ORD,
          "invalid maximum order, 0< %d <=%d", mo, DESC_MAX_ORD);
 
-  ord_t po = MAX(po_,1);
-  ensure(0 < po && po <= mo, "invalid parameter order, 0< %d <=%d", po, mo);
+  ord_t po = np ? MAX(po_,1) : 0;
+  ensure(po <= mo, "invalid parameters maximum order, 0< %d <=%d", po, mo);
 
 #if DESC_DEBUG > 1
-  printf(">> nn=%d, mo=%d, np=%d, po=%d[%d]\n", nn, mo, np, po, po_);
+  printf(">> nn=%d, nv=%d, mo=%d[%d], np=%d, po=%d[%d]\n", nn,nv,mo,mo_,np,po,po_);
 #endif
 
 #pragma GCC diagnostic push
@@ -1311,30 +1317,31 @@ mad_desc_newvp(int nv, ord_t mo, int np_, ord_t po_)
 }
 
 const desc_t*
-mad_desc_newvpo(int nv, ord_t mo, int np_, ord_t po_, const ord_t no_[nv+np_])
+mad_desc_newvpo(int nv_, ord_t mo_, int np_, ord_t po_, const ord_t no_[nv_+np_])
 {
-  if (!no_) return mad_desc_newvp(nv, mo, np_, po_);
+  if (!no_) return mad_desc_newvp(nv_, mo_, np_, po_);
 
   DBGFUN(->);
-  int np = MAX(np_,0);
+  int nv = MAX(nv_,1); assert(nv == nv_); // sanity check for no_
+  int np = MAX(np_,0); assert(np == np_); // sanity check for no_
   int nn = nv+np;
-  ensure(0 < nn && nn <= DESC_MAX_VAR,
+  ensure(nn <= DESC_MAX_VAR,
          "invalid #variables+#parameters, 0< %d <=%d", nn, DESC_MAX_VAR);
-  ensure(mad_mono_min(nn, no_) > 0,
-         "some variables (or parameters) have invalid zero order");
+  ensure(mad_mono_min(nn,no_) > 0,
+         "some variables or parameters have invalid zero maximum order");
 
-  ord_t mo_ = mad_mono_max(nn, no_); mo = MAX(mo, mo_);
-  ensure(0 < mo && mo <= DESC_MAX_ORD,
+  ord_t mo = mad_mono_max(nn,no_); mo = MAX(mo,mo_,1);
+  ensure(mo <= DESC_MAX_ORD,
          "invalid maximum order, 0< %d <=%d", mo, DESC_MAX_ORD);
 
-  ord_t po = MAX(po_,1);
+  ord_t po = 0;
   if (np) {
-    ord_t po_ = mad_mono_max(np, no_+nv); po = MAX(po, po_);
-    ensure(0 < po && po <= mo, "invalid parameter order, 0< %d <=%d", po, mo);
+    po = mad_mono_max(np,no_+nv); po = MAX(po,po_,1);
+    ensure(po <= mo, "invalid parameters maximum order, 0< %d <=%d", po, mo);
   }
 
 #if DESC_DEBUG > 1
-  printf(">> nn=%d, mo=%d, np=%d, po=%d[%d]\n", nn, mo, np, po, po_);
+  printf(">> nn=%d, nv=%d, mo=%d[%d], np=%d, po=%d[%d]\n", nn,nv,mo,mo_,np,po,po_);
 #endif
 
   const desc_t* ret = get_desc(nn, mo, np, po, no_);

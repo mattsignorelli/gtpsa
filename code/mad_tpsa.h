@@ -156,6 +156,7 @@ void    mad_tpsa_wf      (const tpsa_t *a, tpsa_t *c);
 
 void    mad_tpsa_acc     (const tpsa_t *a, num_t v, tpsa_t *c); // c += v*a, aliasing OK
 void    mad_tpsa_scl     (const tpsa_t *a, num_t v, tpsa_t *c); // c  = v*a
+void    mad_tpsa_divn    (const tpsa_t *a, num_t v, tpsa_t *c); // c  = a/v
 void    mad_tpsa_inv     (const tpsa_t *a, num_t v, tpsa_t *c); // c  = v/a
 void    mad_tpsa_invsqrt (const tpsa_t *a, num_t v, tpsa_t *c); // c  = v/sqrt(a)
 
@@ -194,12 +195,12 @@ void    mad_tpsa_logaxpsqrtbpcx2 (const tpsa_t *x, num_t a, num_t b, num_t c, tp
 void    mad_tpsa_logxdy          (const tpsa_t *x, const tpsa_t *y, tpsa_t *r);
 
 // to check for non-homogeneous maps & parameters
-void    mad_tpsa_vec2fld  (ssz_t na, const tpsa_t *a   ,                     tpsa_t *mc[]);
-void    mad_tpsa_fld2vec  (ssz_t na, const tpsa_t *ma[],                     tpsa_t *c   );
-void    mad_tpsa_fgrad    (ssz_t na, const tpsa_t *ma[], const tpsa_t * b  , tpsa_t *c   );
-void    mad_tpsa_liebra   (ssz_t na, const tpsa_t *ma[], const tpsa_t *mb[], tpsa_t *mc[]);
-void    mad_tpsa_exppb    (ssz_t na, const tpsa_t *ma[], const tpsa_t *mb[], tpsa_t *mc[]); // exp(:F:) K
-void    mad_tpsa_logpb    (ssz_t na, const tpsa_t *ma[], const tpsa_t *mb[], tpsa_t *mc[]); // exp(log(:F:))K
+void    mad_tpsa_vec2fld  (ssz_t na, const tpsa_t *a   ,                               tpsa_t *mc[]);
+void    mad_tpsa_fld2vec  (ssz_t na, const tpsa_t *ma[],                               tpsa_t *c   );
+void    mad_tpsa_fgrad    (ssz_t na, const tpsa_t *ma[],           const tpsa_t * b  , tpsa_t *c   );
+void    mad_tpsa_liebra   (ssz_t na, const tpsa_t *ma[],           const tpsa_t *mb[], tpsa_t *mc[]);
+void    mad_tpsa_exppb    (ssz_t na, const tpsa_t *ma[], ssz_t nb, const tpsa_t *mb[], tpsa_t *mc[]); // exp(:F:) K
+void    mad_tpsa_logpb    (ssz_t na, const tpsa_t *ma[],           const tpsa_t *mb[], tpsa_t *mc[]); // exp(log(:F:))K
 
 ord_t   mad_tpsa_mord     (ssz_t na, const tpsa_t *ma[], log_t hi); // max mo (or max hi)
 num_t   mad_tpsa_mnrm     (ssz_t na, const tpsa_t *ma[]);

@@ -16,10 +16,9 @@
  | WITHOUT ANY WARRANTY OF ANY KIND. See http://gnu.org/licenses for details.
  o-----------------------------------------------------------------------------o
 */
-
+#include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-#include <stdlib.h>
 
 #include "mad_mem.h"
 #include "mad_str.h"

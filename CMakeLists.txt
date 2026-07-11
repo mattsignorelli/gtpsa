@@ -17,6 +17,7 @@ add_library(gtpsa SHARED
   code/mad_ctpsa.c
   code/mad_ctpsa_comp.c
   code/mad_ctpsa_conv.c
+  code/mad_ctpsa_div.c
   code/mad_ctpsa_fun.c
   code/mad_ctpsa_io.c
   code/mad_ctpsa_minv.c
@@ -34,6 +35,7 @@ add_library(gtpsa SHARED
   code/mad_str.c
   code/mad_tpsa.c
   code/mad_tpsa_comp.c
+  code/mad_tpsa_div.c
   code/mad_tpsa_fun.c
   code/mad_tpsa_io.c
   code/mad_tpsa_minv.c
